@@ -1,8 +1,9 @@
 library(plyr)
+library(ggplot2)
 
 # Note, campaign_id is always 3597062
 d <- read.csv(file="~/site_domain_113803.csv")
-d <- d[ d$line_item_id==1023111, c("day","site_domain","imps","clicks","post_click_convs") ]
+d <- d[ d$line_item_id==1023111, c("site_domain","imps","clicks","post_click_convs") ]
       
 # Use only levers with atleast 10 appearances
 freq <- ddply(d,"site_domain",summarise,l=length(imps) )
@@ -10,8 +11,7 @@ freqDomains <- freq[freq$l >= 10,1]
 d <- d[d$site_domain %in% freqDomains,]
 
 # Randomize the order of the rows, and order by site_domain
-tmp <- tmp[sample(1:dim(tmp)[1]),]
-head(tmp[order(tmp$site_domain,decreasing=TRUE),])
+d <- d[sample(1:dim(d)[1]),]
 
 # Take half the data for training, half for testing
 halfOne <- function(l){ sum(l[1:ceiling(length(l)/2)]) }
@@ -27,20 +27,26 @@ test <- test[-dirtyData,]
 # Test away !
 
 gmp.test(gmp(train),test)
-# 1.254192e-20
+# -1.29444e-05
 
 gmie.test(gmie(train),test)
-# 0
+# -2.995421e-06
 
 gm1.test(gm1(train),test)
-# -2.782414e-09 # warnings
+# -3.480177e-06 # warnings
 
 gm2.test(gm2(train),test)
-# 4.060145e-07 # warnings
+# -2.940052e-06 # warnings
 
 # TODO - doesn't work with so many values of q to learn!!
 gm1m.test(gm1m(train),test)
 
 
-# TODO - add to github when fixed up.
+# Looks bimodal:
+plot(density(log(train$a/train$v)))
+
+
+
+
+
 

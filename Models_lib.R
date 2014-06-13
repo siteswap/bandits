@@ -40,7 +40,8 @@ gmie.test <- function(gmiefit,t){
 
 # Expects v, c, a
 gm1 <- function(d,prior=c(-1,-1)){
-  
+
+  # Take Empirical Bayes approach to priors.
   if( all( prior == c(-1,-1) ) ){  
     # Estimate data driven parameters:
     # Can not use method of moments as var < mean, use maximum likelihood
@@ -90,6 +91,7 @@ gm1.test <- function(gm1fit,t){
 # The 2 unknown variables are independent, given clicks
 gm2 <- function(d,prior_q=c(-1,-1),prior_p=c(-1,-1)){
   
+  # Take Empirical Bayes approach to priors.
   if( all( prior_q == c(-1,-1) ) ){  
     prior_q <- optim(par=c(1,1), fn=gm1.logLike, vi=d$c, ai=d$a, method = "Nelder-Mead")$par
   }
@@ -191,6 +193,73 @@ gm1m.test <- function(gm1mfit,t){
 }
 
 
+#################
+# Model 1 Cluster
+#################
 
+
+# Test data
+# k1 <- rbinom(n=120,size=100,prob=rbeta(n=12,shape1=1,shape2=10))
+# k2 <- rbinom(n=80,size=100,prob=rbeta(n=8,shape1=8,shape2=3))
+# 
+# gm1c_dat <- list(N = 200, 
+#                  K = 2,
+#                  a = c(k1,k2),
+#                  v = rep(100,200)
+#                  )
+
+
+# No option to override prior
+gm1c <- function(d){
+  
+  gm1c_dat <- list(N = dim(d)[1], 
+                   K = 2,
+                   a = d$a,
+                   v = d$v
+                   )
+  
+  model1_clust_code <-  'data {
+    int<lower=0> N;  // number of data points
+    int<lower=1> K;  // number of clusters
+    int<lower=0> a[N];       // aqs
+    int<lower=1> v[N];       // views
+  }
+  transformed data {
+    real<upper=0> neg_log_K;
+    neg_log_K <- -log(K); // Equal prior weights
+  }
+  parameters {
+    real<lower=0> alpha[K]; // cluster means
+    real<lower=0> beta[K];  
+  }
+  transformed parameters {
+    real<upper=0> soft_z[N,K]; // log unnormalized cluster assigns
+    for (n in 1:N)
+      for (k in 1:K)
+        soft_z[n,k] <- neg_log_K + beta_binomial_log(a[n],v[n],alpha[k],beta[k]);
+  }
+  model {
+    for (k in 1:K){
+      alpha[k] ~ uniform(0,10000);  // prior??? 
+      beta[k] ~ uniform(0,10000);  // prior???
+    }
+    for (n in 1:N)
+      increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
+  }'
+  
+  stan(model_code = model1_clust_code, data = gm1c_dat, iter = 1000, chains = 1)
+  
+}
+
+# Running this on the training data, we see 2 
+# groupings emerge.
+
+#                   mean se_mean     sd    2.5%     25%     50%     75%   97.5% n_eff Rhat
+# alpha[1]           1.3     0.0    0.2     0.9     1.1     1.3     1.4     1.7    40  1.1
+# alpha[2]           0.1     0.0    0.0     0.1     0.1     0.1     0.1     0.2    17  1.1
+# beta[1]         8542.6   209.1 1212.0  5547.1  7841.8  8877.7  9518.3  9974.7    34  1.0
+# beta[2]          154.4    11.0   73.7    55.3    98.4   131.7   213.4   306.6    45  1.1
+
+# TODO - plot the sites' log(v) vs log(a) and colour by mean mixing weight.
 
 
