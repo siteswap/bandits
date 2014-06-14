@@ -208,8 +208,9 @@ gm1m.test <- function(gm1mfit,t){
 #                  v = rep(100,200)
 #                  )
 
-
-# No option to override prior
+# Note - with multiple chains, results suffer from index switching.
+# Also need to be wary if index switching occurring within single chain.
+# -> run multiple chains and pick first one if they agree.
 gm1c <- function(d){
   
   gm1c_dat <- list(N = dim(d)[1], 
@@ -247,7 +248,7 @@ gm1c <- function(d){
       increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
   }'
   
-  stan(model_code = model1_clust_code, data = gm1c_dat, iter = 1000, chains = 1)
+  stan(model_code = model1_clust_code, data = gm1c_dat, iter = 1000, chains = 4)
   
 }
 
@@ -262,4 +263,56 @@ gm1c <- function(d){
 
 # TODO - plot the sites' log(v) vs log(a) and colour by mean mixing weight.
 
+
+#################
+# Model 2 Cluster
+#################
+
+
+gm2c <- function(d){
+  
+  m_dat <- list(N = dim(d)[1], 
+                   K = 2,
+                   a = d$a,
+                   c = d$c,
+                   v = d$v
+  )
+  
+  model_code <-  'data {
+    int<lower=0> N;  // number of data points
+    int<lower=1> K;  // number of clusters
+    int<lower=0> a[N];       // acquisitions
+    int<lower=0> c[N];       // clicks
+    int<lower=1> v[N];       // views
+  }
+  transformed data {
+    real<upper=0> neg_log_K;
+    neg_log_K <- -log(K); // Equal prior weights
+  }
+  parameters {
+    real<lower=0> alphaq[K]; // cluster means
+    real<lower=0> betaq[K];  
+    real<lower=0> alphap[K]; // cluster means
+    real<lower=0> betap[K];  
+  }
+    transformed parameters {
+    real<upper=0> soft_z[N,K]; // log unnormalized cluster assigns
+    for (n in 1:N)
+      for (k in 1:K)
+        soft_z[n,k] <- neg_log_K + beta_binomial_log(a[n],c[n],alphaq[k],betaq[k])
+                                 + beta_binomial_log(c[n],v[n],alphap[k],betap[k]);
+  }
+  model {
+    for (k in 1:K){
+      alphaq[k] ~ uniform(0,10000);  // prior??? 
+      betaq[k] ~ uniform(0,10000);  // prior???
+      alphap[k] ~ uniform(0,10000);  // prior??? 
+      betap[k] ~ uniform(0,10000);  // prior???
+  }
+    for (n in 1:N)
+      increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
+  }'
+  
+  stan(model_code = model_code, data = m_dat, iter = 1000, chains = 1)
+}
 
