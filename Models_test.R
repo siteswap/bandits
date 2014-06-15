@@ -11,6 +11,7 @@ freqDomains <- freq[freq$l >= 10,1]
 d <- d[d$site_domain %in% freqDomains,]
 
 # Randomize the order of the rows, and order by site_domain
+set.seed(seed=2105) # Set seed so sample is consistent
 d <- d[sample(1:dim(d)[1]),]
 
 # Take half the data for training, half for testing
@@ -27,24 +28,25 @@ test <- test[-dirtyData,]
 # Test away !
 
 gmp.test(gmp(train),test)
-# -1.29444e-05
+# -1.332663e-05
 
 gmie.test(gmie(train),test)
-# -2.995421e-06
+# -8.668857e-06
 
 gm1.test(gm1(train),test)
-# -3.480177e-06 # warnings
+# -9.292773e-06 # warnings
 
 gm2.test(gm2(train),test)
-# -2.940052e-06 # warnings
+# -8.773567e-06 # warnings
 
-# TODO - doesn't work with so many values of q to learn!!
-gm1m.test(gm1m(train),test)
+# Model 1 with mixture.
+gm1c.test(gm1c(train),test)
 
+# Model 3 - something wrong.
+gm2c.test(gm2c(train),test)
 
 # Looks bimodal:
 plot(density(log(train$a/train$v)))
-
 
 
 
