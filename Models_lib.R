@@ -130,87 +130,14 @@ gm2.test <- function(gm2fit,t){
 }
 
 
-################
-# Model 1 Mixture
-################
-
-# No option to override prior
-gm1m <- function(d){
-  
-  gm1m_dat <- list(J = dim(d)[1], 
-                     a = d$a,
-                     v = d$v,
-                     K = 2)
-
-  model1_mix_code <- '
-    data {
-      int<lower=0> J; // Levers
-      int<lower=0> a[J]; // acquisitions
-      int<lower=0> v[J]; // views
-      int<lower=1> K; // groups
-    }
-    parameters {
-      // Can we do something with beta-binomial to save computation?
-      simplex[K] theta;
-      real<lower=0> alpha[K]; 
-      real<lower=0> beta[K];
-      real<lower=0,upper=1> q[J];
-    }
-    model {
-      real ps[K]; // hold the k values for summation
-      for(j in 1:J){
-        for(k in 1:K){
-          // the k need to be summed together so we must use log_sum_exp
-          ps[k] <- binomial_log(a[j],v[j],q[j]) + 
-                        beta_log(q[j],alpha[k],beta[k]) + log(theta[k]);
-        }
-        increment_log_prob(log_sum_exp(ps));
-      }    
-    }
-    '
-  
-  # Error : Error in function boost::math::lgamma<d>(d): numeric overflow
-  # error occurred during calling the sampler; sampling not done
-  # TODO - chains don't run in parrallel?!?!?
-  # https://groups.google.com/forum/#!msg/stan-users/3goteHAsJGs/UmSDRo77Vn4J
-  # Could use beta-binomial if you don't need q estimates at first.
-  stan(model_code = model1_mix_code, data = gm1m_dat, iter = 2500, chains = 1)
-}
-
-gm1m.test <- function(gm1mfit,t){
-  
-  q <- extract(gm1mfit)$q
-  realizedCVR <- t$a / t$v
-  # Loss is difference in values, risk is expected loss
-  risk <- c()
-  for(j in 1:length(realizedCVR)){
-    risk[j] <- realizedCVR[j] - mean(q[,j])
-  }
-  
-  # Volume weighted mean loss:
-  risk[is.nan(risk)] <- 0
-  sum(risk * t$v) / sum(t$v)
-}
-
 
 #################
 # Model 1 Cluster
 #################
 
 
-# Test data
-# k1 <- rbinom(n=120,size=100,prob=rbeta(n=12,shape1=1,shape2=10))
-# k2 <- rbinom(n=80,size=100,prob=rbeta(n=8,shape1=8,shape2=3))
-# 
-# gm1c_dat <- list(N = 200, 
-#                  K = 2,
-#                  a = c(k1,k2),
-#                  v = rep(100,200)
-#                  )
-
 # Note - with multiple chains, results suffer from index switching.
 # Also need to be wary if index switching occurring within single chain.
-# -> run multiple chains and pick first one if they agree.
 gm1c <- function(d){
   
   gm1c_dat <- list(N = dim(d)[1], 
@@ -248,20 +175,11 @@ gm1c <- function(d){
       increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
   }'
   
+  # TODO - chains don't run in parrallel?!?!?
+  # https://groups.google.com/forum/#!msg/stan-users/3goteHAsJGs/UmSDRo77Vn4J
   stan(model_code = model1_clust_code, data = gm1c_dat, iter = 1000, chains = 4)
   
 }
-
-# Running this on the training data, we see 2 
-# groupings emerge.
-
-#                   mean se_mean     sd    2.5%     25%     50%     75%   97.5% n_eff Rhat
-# alpha[1]           1.3     0.0    0.2     0.9     1.1     1.3     1.4     1.7    40  1.1
-# alpha[2]           0.1     0.0    0.0     0.1     0.1     0.1     0.1     0.2    17  1.1
-# beta[1]         8542.6   209.1 1212.0  5547.1  7841.8  8877.7  9518.3  9974.7    34  1.0
-# beta[2]          154.4    11.0   73.7    55.3    98.4   131.7   213.4   306.6    45  1.1
-
-# TODO - plot the sites' log(v) vs log(a) and colour by mean mixing weight.
 
 
 #################
@@ -295,7 +213,7 @@ gm2c <- function(d){
     real<lower=0> alphap[K]; // cluster means
     real<lower=0> betap[K];  
   }
-    transformed parameters {
+  transformed parameters {
     real<upper=0> soft_z[N,K]; // log unnormalized cluster assigns
     for (n in 1:N)
       for (k in 1:K)
@@ -308,7 +226,7 @@ gm2c <- function(d){
       betaq[k] ~ uniform(0,10000);  // prior???
       alphap[k] ~ uniform(0,10000);  // prior??? 
       betap[k] ~ uniform(0,10000);  // prior???
-  }
+    }
     for (n in 1:N)
       increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
   }'
@@ -316,3 +234,25 @@ gm2c <- function(d){
   stan(model_code = model_code, data = m_dat, iter = 1000, chains = 1)
 }
 
+
+gm2c.test <- function(gm2cfit,t){
+  
+  m <- extract(gm2cfit)
+  mi <- which(max(m$lp__)==m$lp__)[1]
+  soft_z <- m$soft_z[mi,,]  
+  hard_z <- apply(X=soft_z,MARGIN=1,FUN=function(x){which(x==min(x))})
+  
+  aq <- m$alphaq[mi,hard_z] + t$a 
+  bq <- m$betaq[mi,hard_z] + t$c - t$a
+  ap <- m$alphap[mi,hard_z] + t$c
+  bp <- m$betap[mi,hard_z] + t$v - t$c
+  
+  expectedCVR <- (aq/aq+bq)*(ap/ap+bp)
+  
+  realizedCVR <- t$a / t$v
+  risk <- realizedCVR - expectedCVR
+  risk[is.nan(risk)] <- 0
+  sum(risk * t$v) / sum(t$v)
+}
+
+# TODO consider a zero process as the second process.
