@@ -26,28 +26,23 @@ train <- train[-dirtyData,]
 test <- test[-dirtyData,]
 
 # Test away !
-
 gmp.test(gmp(train),test)
-# -1.332663e-05
+# 5.50897e-05
 
 gmie.test(gmie(train),test)
-# -8.668857e-06
+# 2.59007e-05
 
 gm1.test(gm1(train),test)
-# -9.292773e-06 # warnings
+# 2.839369e-05 # warnings
 
 gm2.test(gm2(train),test)
-# -8.773567e-06 # warnings
+# 2.790645e-05 # warnings
 
 # Model 1 with mixture.
 gm1c.test(gm1c(train),test)
 
 # Model 3 - something wrong.
 gm2c.test(gm2c(train),test)
-
-# Looks bimodal:
-plot(density(log(train$a/train$v)))
-
 
 
 

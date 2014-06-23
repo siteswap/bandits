@@ -17,7 +17,7 @@ gmp <- function(d){
 
 gmp.test <- function(gmpfit,t){
   realizedCVR <- t$a / t$v
-  risk <- realizedCVR - gmpfit
+  risk <- abs(realizedCVR - gmpfit)
   # risk[is.nan(risk)] <- 0
   sum(risk * t$v) / sum(t$v)
 }
@@ -30,7 +30,7 @@ gmie <- function(d){
 
 gmie.test <- function(gmiefit,t){
   realizedCVR <- t$a / t$v
-  risk <- realizedCVR - gmiefit
+  risk <- abs(realizedCVR - gmiefit)
   sum(risk * t$v) / sum(t$v)
 }
 
@@ -76,7 +76,7 @@ gm1.test <- function(gm1fit,t){
   # This works out simply as the true value minus the expectation ( which is alpha/(alpha + beta) )
   realizedCVR <- t$a / t$v
   # Loss is difference in values, risk is expected loss
-  risk <- realizedCVR - gm1fit$alpha_p/(gm1fit$alpha_p + gm1fit$beta_p)
+  risk <- abs(realizedCVR - gm1fit$alpha_p/(gm1fit$alpha_p + gm1fit$beta_p))
   
   # Volume weighted mean loss:
   risk[is.nan(risk)] <- 0
@@ -122,7 +122,7 @@ gm2.test <- function(gm2fit,t){
   # Predicted CVR is q*p
   # Loss is difference in values, risk is expected loss
   # This works out as CVR - E[p]*E[q]
-  risk <- realizedCVR - (gm2fit$alpha_p1/(gm2fit$alpha_p1 + gm2fit$beta_p1))*(gm2fit$alpha_q1/(gm2fit$alpha_q1 + gm2fit$beta_q1))
+  risk <- abs(realizedCVR - (gm2fit$alpha_p1/(gm2fit$alpha_p1 + gm2fit$beta_p1))*(gm2fit$alpha_q1/(gm2fit$alpha_q1 + gm2fit$beta_q1)))
   
   # Volume weighted mean loss:
   risk[is.nan(risk)] <- 0
@@ -250,7 +250,7 @@ gm2c.test <- function(gm2cfit,t){
   expectedCVR <- (aq/aq+bq)*(ap/ap+bp)
   
   realizedCVR <- t$a / t$v
-  risk <- realizedCVR - expectedCVR
+  risk <- abs(realizedCVR - expectedCVR)
   risk[is.nan(risk)] <- 0
   sum(risk * t$v) / sum(t$v)
 }
