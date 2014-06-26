@@ -1,0 +1,102 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\title{Computational Statistics}
+\date{}
+\begin{document}
+\section{Models}
+We define 5 models to fit the data:
+
+Model 1 - 'pooled', all levers are assumed to have the same payoff function. A useful baseline model. We assume a uniform Beta prior so that the MAP estimate of r is equivlanet to the MLE and is also an unbiased estimator. We gain as much information about lever 1 by looking at lever 2 as by looking at lever 1.
+
+  \begin{align}
+	a_i \sim Bin(r,v_i) \\
+	\pi(r) = Beta(1,1)
+  \end{align}
+
+Model 2 - 'independent estimation', we assume that each lever has a completely independent payoff function. There is no information to be gained about lever 1 by looking at lever 2.
+
+  \begin{align}
+	a_i \sim Bin(r_i,v_i) \\
+	\pi(r_i) = Beta(1,1)
+  \end{align}
+
+Model 3 - here we assume a hierarchical model where the conversion rate for each lever is sampled from a Beta distribution with common $\alpha$, $\beta$ parameters across all levers. In a sense, this model lies somewhere between model 1 and model 2, in that data about lever 1 gives us some information about lever 2 via inference of $\alpha$, $\beta$ parameters. 
+
+  \begin{align}
+	a_i \sim Bin(r_i,v_i) \\
+	r_i \sim Beta(\alpha,\beta) \\
+	\pi(\alpha) = Unif(0,10000) \\
+	\pi(\beta) = Unif(0,10000)
+  \end{align}
+
+Model 4 - since acquisitions are rare events, we try to gain more information about a lever be modelling the click-through-rate separately from the conversions. Similarly to model 3, CTR and CVR have a hierarchical model.
+
+  \begin{align}
+	a_i \sim Bin(q_i,c_i) \\
+	c_i \sim Bin(p_i,v_i) \\
+	q_i \sim Beta(\alpha_q,\beta_q) \\
+	p_i \sim Beta(\alpha_p,\beta_p) \\
+	\pi(\alpha_q) = Unif(0,10000) \\
+	\pi(\beta_q) = Unif(0,10000) \\
+	\pi(\alpha_p) = Unif(0,10000) \\
+	\pi(\beta_p) = Unif(0,10000) 
+  \end{align}
+
+Model 5 - model 4 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a beta-binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
+ 
+ \begin{align}
+	a_i \sim Bin(q_i,c_i) \\
+	c_i \sim Bin(p_i,v_i) \\
+	k \sim Bern(h) 
+\end{align}
+	\[ 
+	q_i \sim 
+  	\begin{cases}
+		Beta(\alpha_{q0},\beta_{q0}) & \quad \text{if k is 0}\\
+		Beta(\alpha_{q1},\beta_{q1}) & \quad \text{if k is 1}
+	\end{cases}
+	\]
+	\[
+	p_i \sim 
+  	\begin{cases}
+		Beta(\alpha_{p0},\beta_{p0}) & \quad \text{if k is 0}\\
+		Beta(\alpha_{p1},\beta_{p1}) & \quad \text{if k is 1}\\
+	\end{cases}
+	\]
+
+ \begin{align}
+	\pi(h) = Unif(0,1) \\
+	\pi(\alpha_{q0}) = Gamma(1,2) \\
+	\pi(\beta_{q0}) = Gamma(1,2) \\
+	\pi(\alpha_{p0}) = Gamma(1,2) \\
+	\pi(\beta_{p0}) = Gamma(1,2) \\
+	\pi(\alpha_{q1}) = Unif(0,10000) \\
+	\pi(\beta_{q1}) = Unif(0,10000) \\
+	\pi(\alpha_{p1}) = Unif(0,10000) \\
+	\pi(\beta_{p1}) = Unif(0,10000)
+\end{align}
+
+\section{Fitting Models}
+
+For each model, we will generate a sample from the posterior distribution using the Stan modelling language.
+
+If this becomes computationally infeasible, we may use point estimates or approximate inference techniques.
+
+\section{Data}
+
+Data schema: J sites (the levers) each having a count for a, c and v.
+Data: One artificial, one real partial, and one real full dataset.
+
+\section{Testing}
+
+The data from 5 months is randomly split between train and test datasets. Each model is fit using the training dataset and predictions compared against test data.
+
+We define 3 loss functions:
+\begin{enumerate}
+	\item posterior likelihood of realized CVR. Not clear way to compute this from a posterior sample - apply density estimation?
+	\item volume weighted difference in realized CVR (relates closely to the lost revenue). The Bayes estimator then is just the true CVR minus the expected CVR.
+	\item vol weighted MSE.
+\end{enumerate}
+
+\end{document}
