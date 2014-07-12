@@ -130,7 +130,7 @@ Firstly note that:
 We may construct the probability mass function for a using the conditional distributions:
 
 \begin{align}
-p(a|p,q,n) &= p(a|q,c)p(c|p,n) \\
+p(a|p,q,n) &= \sum_C p(a|q,c)p(c|p,n) \\
  &= \sum_{c=a}^n {c \choose a} p^a(1-p)^{c-a} {n \choose c} q^c (1-q)^{n-c}
 \end{align}
 
@@ -140,7 +140,7 @@ Try to pull out a binomial by reparameterizing with $ w = c-a$:
 &= \sum_{w=0}^{n-a} {w+a \choose a} p^a(1-p)^w {n \choose w+a} q^{w+a} (1-q)^{n-w+a} \\
 &= {n \choose a} (pq)^a \sum_{c=a}^n {n-a \choose w} ((1-p)q)^w (1-q)^{(n-a)-w} \\
 &= {n \choose a} (pq)^a ((1-p)q +  (1-q))^{n-a} \\
-&= {n \choose a} (pq)^a(1-pq)^{n-a} = Binom(a;pq,n)
+&= Binom(a;pq,n)
 \end{align}
 
 Ref: http://math.stackexchange.com/questions/626457/conditional-binomials
