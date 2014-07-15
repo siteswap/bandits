@@ -58,7 +58,7 @@ ddply(d[d$a>0,],~g,summarize, # Created correlation!
 # 1 1 0.1479859      0.1549478 0.5607463 0.4642423   260 10485552
 
 
-summary(glm(cbind(a,c)~log(p),data=d[d$c>0,],family=binomial)) # No evidence of correlation.
+summary(glm(cbind(a,c-a)~log(p),data=d[d$c>0,],family=binomial)) # No evidence of correlation.
 summary(glm(q~log(p),data=d[d$a>0,])) # Strong evidence. We must be creating some relationship with this selection.
 
 #############################
@@ -128,8 +128,8 @@ ddply(d[d$a>0,],~g,summarize,
 # g       Cor ImpWeigthedCor   RankCor items    imps
 # 1 1 0.1775996      0.2135723 0.6933963   165 9564968
 
-summary(glm(cbind(a,c)~p,data=d[d$c>0,],family=binomial)) # no evidence - need to use log values
-summary(glm(cbind(a,c)~log(p),data=d[d$c>0,],family=binomial)) # Very strong evidence
+summary(glm(cbind(a,c-a)~p,data=d[d$c>0,],family=binomial)) # no evidence - need to use log values
+summary(glm(cbind(a,c-a)~log(p),data=d[d$c>0,],family=binomial)) # Very strong evidence
 summary(glm(q~log(p),data=d[d$a>0,])) # Even stronger for a > 0
 
 #########################################
@@ -439,11 +439,70 @@ lrTestBB_stan(dbbc$a,dbbc$c)       # 0 - reject the null
 
 
 ###################
-# Test Correlation
+# Test clustering
 ###################
 # Simple - split in to groups, based on CTR - regress and compare residuals.
 # Can do this simple split with both binomial and betabinomial emissions.
-# LR test
+# LR test - 1 cluste vs 2 clusters.
+
+# A sample point (and therefore an ML estimate) requires a sample from Z
+# which is a categorical vector. 
+# If we are only interested in model comparison, we could sum out the 
+# p and q values (so both models would be beta-binomial) and compare.
+# But this still leaves problem of z values. Can we, for model comparison
+# somehow sum them out too?
+
+# 1) The z parameter is, a-priori, distributed according to Categorical(theta),
+# so, a priori, the likelihood of a point is SUM that*BB. But in a true ML or MAP
+# setting, we would weight the more likely cluster at 1 (not at .6 say, according to
+# the posterior estimate of the distribution of z). We could instead consider each
+# z to be sampled from an independent prior, but 
+
+# 2) There is a sort of 2 step algo in the stan cluster code - it samples from posterior
+# of the emission densities, given a distribution for responsibility param. It then 
+# takes sets the responsibility param to be the Expectation given emission values.
+# It's similar to EM, except that the M step is an HMC step, not a maximization.
+
+# Either way, given the large number of indices, we would need EM or Gibbs (VB if we
+# require speed) to efficiently derive posterior distributions of p and q.
+
+# It's unclear what each of these models does for us - we are neither taking a 
+# point hypothesis for LR test, nor being fully Bayesian and summing out all 
+# parameters to produce a Bayes factor - write this up!
+
+# 'Naive Bayes classifier' is a term applied to any clustering model where we assume 
+# independence of the features. The features are the emissions (3D Gaussian for images,
+# multinomial for word frequencies which is the generalization of our work). The 
+# independence means we don't need to worry about covariances and so the (approximation) 
+# algorithms are quite quick. An SVM, for example, would be able to consider more complex
+# relationships in it's classification.
+
+
+
+LRCluster <- function(d){
+
+  # Assume median values for cutoff
+  t <- median(d$p[d$p>0])
+  d$cluster <- (d$p>t)*1
+  
+  # Single cluster
+  m0 <- glm(cbind(a,c-a)~1,data=d,family=binomial)
+  # 2 clusters
+  m1 <- glm(cbind(a,c-a)~cluster,data=d,family=binomial)
+  
+  logLik(m1)[1]/logLik(m0)[1]
+}
+
+
+ggplot(data=d) + 
+  aes(x = log(a/c), y = log(c/n)) +
+  geom_point(aes(size = log(n),alpha = 0.3, color=as.factor(c("good","bad"))[cluster+1]))
+
+
+LRCluster(dreal[dreal$a<=dreal$c,])
+
+LRCluster(dclust[ (dclust$c>0),])
+# 0.7130438
 
 
 
