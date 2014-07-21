@@ -1,0 +1,77 @@
+increment_log_prob - can be in transformed param and model block.
+
+
+A sampling statement this is notational convenience as well as dropping additive constant terms:
+        y ~ normal(mu,sigma);
+
+It is equivalent to, but this one will give you exact log likelihood for LR tests:
+        increment_log_prob(normal_log(y,mu,sigma));
+        
+// Note that soft_z is a deterministic function of alpha and betas, it is not sampled. The parameter space that we sample from is just the 8 values defined in the parameter block. It should not increase the rejection rate or make exploration of the posterior more expensive.
+// This is the only way to deal with discrete distributions in Stan, as HMC requires a Jacobian.
+
+The variables in the parameter block are read from the sampler's current parameter values (HMC or NUTS).
+
+Mixture models -
+We 'sum out' the categorical responsibility parameter, z_n. This means that for a 2 cluster model with 1000 data points, we never see the length 1000 boolean vector, z but we do sample from the simplex(2) which is essentially the proportion of points assigned to each cluster.
+
+Note - our cluster model is wrong, we are giving every data point a new mixture parameter! That's why they aren't categorical values!!! You only do that for 
+
+The stan doc has section putting common clustering algos in a mixture model style.
+
+So, should we A, sum out the categorical variables and somehow work them out later. Or B, use the 'soft cluster' approach. Actually we don't care about values of z_n, we only care about estimating q and p.
+
+We need to put q and p back in the model.
+
+
+
+
+#######
+# Stan
+#######
+#
+# Section 25 - program blocks
+#
+# The variables in the parameter block are read from the sampler's current 
+# parameter values (HMC or NUTS).
+# 
+# Before generating any samples, data variables are read in, then the transformed
+# data variables are declared and the associated statements executed to define them.
+# This means the statements in the transformed data block are only ever evaluated
+# once. Transformed parameters work the same way, being defined in terms of the
+# parameters, transformed data, and data variables. The difference is the frequency of
+# evaluation. Parameters are read in and (inverse) transformed to constrained repre-
+# sentations on their natural scales once per log probability and gradient evaluation.
+# This means the inverse transforms and their log absolute Jacobian determinants are
+# evaluated once per leapfrog step. Transformed parameters are then declared and
+# their defining statements executed once per leapfrog step.
+#  
+# The generated quantity variables are defined once per sample after all the leapfrog
+# steps have been completed. These may be random quantities, so the block must be
+# rerun even if the Metropolis adjustment of HMC or NUTS rejects the update proposal.
+#  
+# The generated quantity variables are defined once per sample after all the leapfrog
+# steps have been completed. These may be random quantities, so the block must be
+# rerun even if the Metropolis adjustment of HMC or NUTS rejects the update proposal.
+# 
+# Variables declared as parameters cannot be directly assigned values.
+# 
+# Stan’s two samplers, standard Hamiltonian Monte Carlo (HMC) and the adaptive No-U-
+# Turn sampler (NUTS), are most easily (and often most effectively) implemented over a
+# multivariate probability density that has support on all of R^n. To do this, the parame-
+# ters defined in the parameters block must be transformed so they are unconstrained. Internally stan keeps unconstrained variables, and transforms them to constrained.
+# 
+# The amount of work done by the sampler does depend on the number of uncon-
+# strained parameters, but this is usually dwarfed by the gradient calculations.
+# 
+#####################################
+# Limits of sampling based approaches
+#####################################
+#
+# In light of multi-modality and identifiability problems, the advice often given in 
+# fitting clustering models
+# is to try many different initializations and select the sample with the highest overall
+# probability. It is also popular to use optimization-based point estimators such as
+# expectation maximization or variational Bayes, which can be much more efficient than
+# sampling-based approaches.
+#

@@ -1,9 +1,12 @@
 \documentclass[12pt]{article}
 \usepackage{amsmath}
 \usepackage{graphicx}
-\title{Computational Statistics}
 \date{}
 \begin{document}
+
+We provide a set of models for dealing with dependent binomial data in an RTB setting. We also provide a set of tests for assessing the validity of each model to new data as well as example data for testing.
+
+We also provide decision rules to optimise campaign targets in an RTB setting.
 
 \section{Data}
 
@@ -15,7 +18,7 @@ We have 3 vector valued random variables. The ith index represents the values fo
 \end{itemize}
 
 \section{Models}
-We define 5 models to fit the data:
+We define 7 models to fit the data:
 
 \subsection{Model 1 - 'pooled'} 
 All levers are assumed to have the same payoff function. A useful baseline model. We assume a uniform Beta prior so that the MAP estimate of r is equivlanet to the MLE and is also an unbiased estimator. We gain as much information about lever 1 by looking at lever 2 as by looking at lever 1.
@@ -33,8 +36,8 @@ We assume that each lever has a completely independent payoff function. There is
 	\pi(r_i) = Beta(1,1)
   \end{align}
 
-\subsection{Model 3} 
-Here we assume a hierarchical model where the conversion rate for each lever is sampled from a Beta distribution with common $\alpha$, $\beta$ parameters across all levers. In a sense, this model lies somewhere between model 1 and model 2, in that data about lever 1 gives us some information about lever 2 via inference of $\alpha$, $\beta$ parameters. 
+\subsection{Model 3 - 'hierarchical estimation'} 
+Useful if data is over dispersed for a binomial model. Here we assume a hierarchical model where the conversion rate for each lever is sampled from a Beta distribution with common $\alpha$, $\beta$ parameters across all levers. In a sense, this model lies somewhere between model 1 and model 2, in that data about lever 1 gives us some information about lever 2 via inference of $\alpha$, $\beta$ parameters. 
 
   \begin{align}
 	a_i \sim Bin(r_i,n_i) \\
@@ -43,7 +46,7 @@ Here we assume a hierarchical model where the conversion rate for each lever is 
 	\pi(\beta) = Unif(0,10000)
   \end{align}
 
-\subsection{Model 4} 
+\subsection{Model 4 - 'Model 3 plus clicks'} 
 Since acquisitions are rare events, we try to gain more information about a lever be modelling the click-through-rate separately from the conversions. Similarly to model 3, CTR and CVR have a hierarchical model.
 
   \begin{align}
@@ -59,7 +62,9 @@ Since acquisitions are rare events, we try to gain more information about a leve
 
 When p and q are independent of each other, $a_i$ has distribution $Bin(p_iq_i,n)$ and $p_iq_i$ has distribution $Beta(a_i,n_i - a_i)$ (see 'Do Clicks Matter' for proof). This makes it equivalent to model 3 with different priors. The intuition here is that clicks are not informative - as much as they increase our belief in click through rate, they decrease our belief in the acquisition rate.
 
-\subsection{Model 5}
+
+\subsection{Model 6 - 'hierarchical estimation with clusters'}
+
 Model 4 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a beta-binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
  
  \begin{align}
@@ -96,13 +101,52 @@ Model 4 assumed that CTR and CVR are independent. Experience suggests that lever
 
 \includegraphics{GraphMod.jpg}
 
-\section{Fitting Models}
+\subsection{Model 7 - 'beta-binomial with correlation'}
 
-For each model, we will generate a sample from the posterior distribution using the Stan modelling language.
+'Bacon With Your Eggs? Applications of a New Bivariate Beta-Binomial Distribution'
+'The Use of a Correlated Binomial Model for the Analysis of Certain Toxicological Experiments'
+Lee - 'Properties and Applications of the Sarmanov Family of Bivariate Distributions'
 
-If this becomes computationally infeasible, we may use point estimates or approximate inference techniques.
+As an alternative to model 6, where rate prediction will change abruptly between clusters, we look for a model where q can vary smoothly as a function of p.
+
+We use a relatively unused binomial correlation model, discussed in 'Bacon With Your Eggs? Applications of a New Bivariate Beta-Binomial Distribution'. 
 
 \section{Testing}
+
+We take the approach of starting with a simple model and run further tests to decide whether there is evidence to expand the model. 
+
+Where possible we prefer tests with strong theoretical backing, e.g. LR. As model complexity rises it becomes harder to rely on these. We use information criteria and posterior validation.
+
+\subsection{test 1} A frequentist style goodness of fit test designed to assess whether data can be well explained with simple binomial model 1. We use the binomial approximation to the Normal and perform pearson chisq on the residuals. This only holds for large n, so we group the small n values to test whether (together) they share the same mean.
+
+Benefits are that we can have a composite alternative hypothesis, downside is the approximation used. Could be improved by Yates' corerction. TODO - approximation fails for p as rate is very small.
+
+'Goodness-of-Fit Issues in Toxicological Experiments Involving Litters of Varying Size'
+
+\subsection{test 2}
+
+Assuming we reject model 1, we try LR test to see if data is better modelled using beta-binomial. Testing null hypothesis against all others is difficult. LR test has the benefit of being 'most powerful' for comparing 2 point hypotheses, so is a good choice assuming we are happy using ML point hypotheses. If we were willing to specify priors on parameters, we could turn this in to a Bayes factor test.
+
+TODO - compare ratio value to alpha, or do chisq on deviances?
+
+Although this test can show whether Model 3 is better, it can not show whether it is 'good'. This paper has excellent review of goodness-of-fit tests for beta-binomial model:
+'Bootstrap goodness-of-fit test for the beta-binomial model'
+
+We use both VGAM and Stan package to get ML estimates for beta-binomial.
+
+\subsection{test 3}
+
+Assuming we reject null in test 2, due to some form of over dispersion, we check if can extend this to 2 cluster model with another LR test. Obviously we could keep testing for additional clusters. A more general approach could be to define prior penalizing large number of clusters and use VB to find optimal fit.
+
+We offer a cheap - 'are there clusters between median values'. As well as more involved full fit model using stan.
+
+\subsection{test 4}
+
+Use AIC and BIC for comparison between Model 6 and Model 7. These models aren't nested.
+
+\subsection{Posterior checks}
+
+Complementary to the information criteria.
 
 We will run the same tests on both an artificially generated dataset, as well as historical data from an Advance campaign.
 
@@ -110,11 +154,32 @@ The data from is randomly split between train and test datasets. Each model is f
 
 We define 3 loss functions:
 \begin{enumerate}
-	\item Posterior likelihood of realized CVR. See section 25.9 in the stan manual for how to use the generated quantities section to calculate posterior event probabilities.
+	\item Posterior likelihood of realized CVR. (See section 25.9 in the stan manual for how to use the generated quantities section to calculate posterior event probabilities.)
 	\item Volume weighted difference in realized CVR (relates closely to budget wasted). 
 	\item Vol weighted MSE.
 \end{enumerate}
 
+
+\section{Results}
+
+
+\begin{itemize}
+	\item Need to use log values of p.
+	\item Clustering based on $a_i$ creates false correlations.
+	\item Clustering based on c does not create false correlations.
+	\item Using c greater than 0, correlations do not show up. But become stronger for c gt 1, c gt 2. This is because it reduces the noise of all the small-n zero and one values.
+	\item Filter based on realized CTR is no use as it does not help with (3). Needs a correlation measure which properly accounts for likelihood weight of response - closest thing is glm.
+	\item Binomial GLM does the best job of (4), though does not consider error in dependent variable.
+\end{itemize}
+
+
+
+
+\section{Fitting Models}
+
+For each model, we will generate a sample from the posterior distribution using the Stan modelling language.
+
+If this becomes computationally infeasible, we may use point estimates or approximate inference techniques.
 \section{Do Clicks Matter}
 
 \subsection{Distribution of a conditioned on n}

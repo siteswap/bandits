@@ -1,8 +1,12 @@
 
+
+
+
 library(inline) 
 library(Rcpp)
 library(rstan) 
 
+ 
 ###############
 # Baseline non-hierarchical models:
 # 1) Complete pooling
@@ -186,6 +190,11 @@ gm1c <- function(d){
 # Model 2 Cluster
 #################
 
+# Under Stan - if no prior is specified for a parameter, it is implicitly given
+# a uniform prior on its support.
+# p, q are the model parameters. They are drawn from a Beta distribution
+# whose params are drawn from a hyperprior. These are more often specified
+# in terms of transformed params (chap 5).
 
 gm2c <- function(d){
   
@@ -195,15 +204,19 @@ gm2c <- function(d){
                    c = d$c,
                    v = d$v
   )
-  
+
+  # Need categorical prior for K. 
+  # It applies chain rule to work out derivatives
+  # for HMC using stan's algorithmic differentiation library.
   model_code <-  'data {
     int<lower=0> N;  // number of data points
-    int<lower=1> K;  // number of clusters
     int<lower=0> a[N];       // acquisitions
     int<lower=0> c[N];       // clicks
     int<lower=1> v[N];       // views
   }
   transformed data {
+    int<lower=1> K;  // number of clusters
+    K <- 2;
     real<upper=0> neg_log_K;
     neg_log_K <- -log(K); // Equal prior weights
   }
@@ -212,8 +225,11 @@ gm2c <- function(d){
     real<lower=0> betaq[K];  
     real<lower=0> alphap[K]; // cluster means
     real<lower=0> betap[K];  
+    real<lower=0,upper=1> p[N];  
+    real<lower=0,upper=1> q[N];  
   }
   transformed parameters {
+
     real<upper=0> soft_z[N,K]; // log unnormalized cluster assigns
     for (n in 1:N)
       for (k in 1:K)
@@ -221,12 +237,18 @@ gm2c <- function(d){
                                  + beta_binomial_log(c[n],v[n],alphap[k],betap[k]);
   }
   model {
-    for (k in 1:K){
-      alphaq[k] ~ uniform(0,10000);  // prior??? 
-      betaq[k] ~ uniform(0,10000);  // prior???
-      alphap[k] ~ uniform(0,10000);  // prior??? 
-      betap[k] ~ uniform(0,10000);  // prior???
-    }
+
+    // Bad group
+    alphaq[0] ~ gamma(1,2);  
+    betaq[0] ~ gamma(1,2);  
+    alphap[0] ~ gamma(1,2);  
+    betap[0] ~ gamma(1,2);  
+    // Good group
+    alphaq[1] ~ uniform(0,10000);  
+    betaq[1] ~ uniform(0,10000);  
+    alphap[1] ~ uniform(0,10000);  
+    betap[1] ~ uniform(0,10000);  
+
     for (n in 1:N)
       increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
   }'

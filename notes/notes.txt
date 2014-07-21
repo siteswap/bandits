@@ -1,0 +1,251 @@
+
+### Complete pooling ###
+
+Assumes a single value of q which parameterizes all binomial trials. Therefore the likelihood function is as if we group all data in to a single trial.
+
+We lazily take a frequentist estimator of q, ignoring the uncertainty around it as this is tiny for such a large trial. This is equivalent to expected loss with a linear loss function.
+
+### Individual Estimation ###
+
+Assumes q values are completely unrelated to each other (no hierarchy). Again (though with less justification) we use a classical estimator of the true value. This is equivalent to expected loss with a linear loss function.
+
+
+### Model 1 & 2 ###
+
+We take an EMPIRICAL BAYES / MAXIMUM MARGINAL LIKELIHOOD approach to setting the q and p prior parameters. Alternatively we can see this as an approximation of a fully Bayesian treatment within a hierarchical model, where we set alpha, beta to ML values (http://en.wikipedia.org/wiki/Empirical_Bayes_method).
+
+Models 1 & 2 use a data-driven prior for the uncertainty of q and p values. These are *not* hierarchical models as the q and p values do *not* share any common parameters. The Beta represents OUR DEGREE OF UNCERTAINTY about it's true value. We therefore update separate betas.
+
+It also allows us to try different priors - Jeffrey's etc.
+
+-- BUT --
+
+To estimate the prior, we assume there *is* a hierarchical structure - that q's and p's are drawn from the same Beta distributions. We use this model to estimate Alpha and Beta.
+
+If we were being strict, we should 1) not take ML estimates 2) update our view of alpha and beta as new information comes in. This is what gm1m does, but its too slow when there are 2000 q values to estimate.
+
+Is this wrong?
+
+### Model 3 (Beta clustering) ###
+
+We develop Empirical Bayesian priors for q, p under model 3 (a fully Bayesian treatment of the whole model is too expensive for 2000 q values). 
+
+
+If we take ML point estimates from this, then we are dealing with beta priors (since point estimate of K belongs exactly). We can then update the conjugate beta priors!
+
+
+RStan talks about mixture models where we are allowed to marginalize out the mixing parameter. For our case, we want to know the mixing parameter, so infact, we are really talking about a CLUSTERING model (atleast in the way RStan reference divides it).
+
+Bayesian inference is hard in clustering models - index swapping means there is not a unique solution (though they are equivalent). Also multimodality makes it hard to visit all the modal areas (not too bad if K=2).
+
+We note the bi-modal nature of:
+# plot(density(log(train$a/train$v)))
+and consider a 2 mode mixture of betas for p and q. 
+
+Taking a fully Bayesian treatment is practically too expensive where J == 2000.
+
+
+
+
+
+###################################################
+###################################################
+## Hypothesis testing 
+###################################################
+###################################################
+
+
+# Approaches to Bayesian model diagnostics:
+#  Posterior predictive checks
+#  Info criteria
+#  Bayes factors (marginal likelihood)
+#  Sensitivity analysis (change priors/model see difference)
+
+# Read part II BDA3.
+
+# CHECKING MODELS - many uses of posterior predictive replicated data (can use stan for this):
+#   - how well does posterior predictive predict (you need to create some 
+#         loss function / discrepency measure appropriate to your use). Generate a
+#         distribution for the test statistic under the 'model is correct' hypothesis.
+#         Then calculate p-value for the observed data. See pg 146. You can do all
+#         sorts of stuff like this. Let's you turn this in to hypothesis test.
+#   - sample from posterior predictive - visually compare to real data.
+
+# MODEL COMPARISON - which model is better, but not is this model good.
+#   - Information criteria - estimates/approximations to cross/externally validated data.
+#   - Bayes factors (use model evidence aka marginal likelihood)
+
+# ANOVA - a series of submodels, where you compare the ratio of errors.
+#       - assumes normally distributed errors so you can do an F-test.
+#       - what if errors not N, what if only 1 sample per group.
+# Since ANOVA is comparing errors in NLM, we can use GLM to generate errors.
+# we would need to define a dummy variable for every lever 
+# (since we are giving each one it's own group). Alternatively, we could model the
+# true values as random variables using faraway glme? (with beta?)
+# We would compare cbind(a,c)~1 and cbind(a,c-a) ~ factor(1:length(a))
+# ANOVA on glm gives you the deviances, but no f-test (since f-test is only for Normal residuals).
+
+#anova(glm,test="chisq")
+
+# Are p_i all the same, are q_i all the same.
+#   - LR test - but how to stop it preferring the more complex? And how to not overfit?
+#   - Marginal likelihood for model selection between the 2 models.
+#   - AIC / BIC
+#   - Bayesian hypothesis testing
+# Are true p_i and q_i Beta distributed
+#   - Look at tests for beta-binomial, UMP goodness of fit?
+#   - LR test
+# Are p_i and q_i correlated in some way.
+#   - LR test
+#   - AIC
+#   - 'Bacon With Your Eggs? Applications of a New Bivariate Beta-Binomial Distribution'
+#   - 'The Use of a Correlated Binomial Model for the Analysis of Certain Toxicological Experiments'
+# Are p_i and q_i clustered.
+#   - test/s discussed with AC
+# Lee - 'Properties and Applications of the Sarmanov Family of Bivariate Distributions'
+# g(p1, p2) = f(p1|??1, ??1)f(p2|??2, ??2) ?[1 +??(p1 ????1)(p2 ????2)].
+
+# Now put it all together in a nice library!
+
+# GEE ?
+# VGLM ?
+# Log Linear ?
+
+#####################
+# Test - are binomials drawn from same distribution?
+# Research 'Testing Equality of Binomial Proportions'
+
+# 0) t-statistic for testing true means when variance is unknown.
+
+# If all our samples had the same n, we would aggregate the successes and see a binomial distribution,
+# which in large n is approximated by Normal. We would then perform chi-squared to test goodness of fit.
+# The residuals are then chisqr. This is same procedure as Pearsons chisqr.
+# BUT - our n are not the same, and many are small!
+
+# -> Idea, group the small n together. We can use chisq
+# -> If we choose a p, we can use pearson chisq.
+
+# Pearson chi squared test for goodness-of-fit of categorical data
+# Contents of each bucket minus the expected value is sum of iid r.v.
+# By CLT, this is N(0,Var). This is the same proof for binomial approx to Normal.
+# We then add sum the errors for each bucket 
+# to get a chisq with #bucket-1 degrees of freedom.
+
+# 1) Assume normal approximation to binomial ( fishy for small n ):
+# The chisquared statistic is the function meeting the Monotone Likelihood Ratio
+# requirement. Therefore test is UMP.
+# For normally distributed variables, under the null hypothesis,
+# the SSE follows a chi-squared distribution.
+
+# 1.1) If we group everything, this *is* Bin by definition!
+
+# This is not good for q, as it's very close to zero.
+
+# Pearson chisq (relies on normal approximation? should be able to handle different n)
+# Yates chisq (corrects pearson for approximation error)
+
+# Fisher's exact test compares 2 (not UMP, also see Barnard exact test).
+# 'An exact method of testing equality of several binomial proportions to a specified standard'
+# 'Testing the equality of several binomial proportions to a prespecified standard' - EVEN BETTER!
+
+# Attempt at an 'exact test':
+# It would be nice to get the UMP benefits of (1) without the approximation
+# assumption. But can't get max invariant statitic to reduce to point-vs-interval
+# and then MLR to get UMP. Best can do is make up a stat.
+# 2) H0: All samples are drawn from common p - is this an MLR family?
+# (p is a nuisance parameter as we don't care what value it actually takes). 
+# It's not clear what statistic we can use here to get UMP test.
+# If we knew the p to test, we could define some test statistic.
+# We might then compute the distribution of this statistic trhough simulation 
+# and decide whether the observed statistic was sufficiently extreme to reject.
+
+# Formed as a model comparison:
+
+# 3) Form LR test
+# If we can specify alternative model we can use LR test. As ML solution for p is used. 
+# ML solution for p is a/c.
+# Compare common p vs independent p's.
+# Calculate the LR statistic (aka Deviance). 
+# This is approx chisq distributied with df1 - df2 degrees of freedom.
+# We would be forced to use AIC instead if the models were not nested, but no need here.
+# Validate your results against glm (though glm should be slightly less accurate because 
+# it uses computational solution, where you use analytic solution).
+
+
+# 4) Bayes factor 
+# We may question whether ML point estimates are representative and robust.
+# If instead of using ML values for the test, we defined some prior over p values,
+# we could use then marginalize out the parameter and the LR test becomes a Bayes factor test.
+# Stan can do this for you.
+
+
+##########################
+# Test single p and q
+##########################
+
+# 1) Group the low scoring data and test - passes very strongly.
+# Benefit is that we don't have to specify an alternative.
+
+# 4) Bayes - we leave for later, but has benefit of not assuming MLE.
+# This might be relevant if likelihood is sharply peaked for one hypothesis, 
+# but not the other.
+
+
+####################
+# Test beta-binomial 
+####################
+
+# We can not accept the total independence assumption in the previous LR test.
+# But nor can we accept the single p either.
+
+# Testing null hypothesis against all others is difficult. This paper has a great
+# discussion about the various approaches chosen:
+# 'Bootstrap goodness-of-fit test for the beta-binomial model'
+
+# See fitting dirichlet-multinomial aka multinomial-polya.
+
+# We just go for LR:
+# ML estimate for DirMult not available in closed form - use numerical optimization (see T.Minka 2003)
+
+###################
+# Test clustering
+###################
+# Simple - split in to groups, based on CTR - regress and compare residuals.
+# Can do this simple split with both binomial and betabinomial emissions.
+# LR test - 1 cluste vs 2 clusters.
+
+# A sample point (and therefore an ML estimate) requires a sample from Z
+# which is a categorical vector. 
+# If we are only interested in model comparison, we could sum out the 
+# p and q values (so both models would be beta-binomial) and compare.
+# But this still leaves problem of z values. Can we, for model comparison
+# somehow sum them out too?
+
+# 1) The z parameter is, a-priori, distributed according to Categorical(theta),
+# so, a priori, the likelihood of a point is SUM that*BB. But in a true ML or MAP
+# setting, we would weight the more likely cluster at 1 (not at .6 say, according to
+# the posterior estimate of the distribution of z). We could instead consider each
+# z to be sampled from an independent prior, but 
+
+# 2) There is a sort of 2 step algo in the stan cluster code - it samples from posterior
+# of the emission densities, given a distribution for responsibility param. It then 
+# takes sets the responsibility param to be the Expectation given emission values.
+# It's similar to EM, except that the M step is an HMC step, not a maximization.
+
+# Either way, given the large number of indices, we would need EM or Gibbs (VB if we
+# require speed) to efficiently derive posterior distributions of p and q.
+
+# It's unclear what each of these models does for us - we are neither taking a 
+# point hypothesis for LR test, nor being fully Bayesian and summing out all 
+# parameters to produce a Bayes factor - write this up!
+
+# 'Naive Bayes classifier' is a term applied to any clustering model where we assume 
+# independence of the features. The features are the emissions (3D Gaussian for images,
+# multinomial for word frequencies which is the generalization of our work). The 
+# independence means we don't need to worry about covariances and so the (approximation) 
+# algorithms are quite quick. An SVM, for example, would be able to consider more complex
+# relationships in it's classification.
+
+
+
+

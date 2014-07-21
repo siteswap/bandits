@@ -1,0 +1,49 @@
+
+#########################################
+#############  18 July  #################
+#########################################
+
+Goals:
+
+Produce 'results' section.
+Include very short EDA section as motivation.
+Write up posterior mean loss with CV.
+Leave proper LR test of clusters - use Gibbs for this?
+
+Done:
+
+Created data simulation functions.
+Created a range of tests for assessing the validity of each model.
+Researched binomial correlation models ('Bacon & Eggs').
+Not looked in to error-in-variable models and I have put the VB work on hold for now.
+
+
+#########################################
+#############  11 July  #################
+#########################################
+
+Goals:
+
+Work towards a 'toolkit' for k-stage processes.
+Generate simulated data and produce concrete tests.
+Work through the binomial correlation models - something where relationship can vary smoothly e.g. Linear regression of inverse logit of rates.
+Consider errors-in-variable models.
+Literature search for Bayesian binomial mixture
+Include EDA for motivation.
+
+
+#########################################
+#############  04 July  #################
+#########################################
+
+Goals:
+
+Literature search on Bayesian binomial mixture. There is very little info in binomial data and small support, so favours few clusters.
+EM algo for mixture, followed by VB (see statistical pattern recognition - Webb/Copsey), compare to K-means, zero-inflated to see if there is improvement.
+Consider correlated (joint) prior between p and q model.
+Test 	- with posterior likelihood
+	- top 10% of levers 
+	- diagnostic ability
+Use priors to bias good/bad grouping and avoid index switching (dont bother with one group being a zero emmission).
+
+
