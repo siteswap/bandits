@@ -18,9 +18,9 @@ We hope that the models can be further expanded to include a more complex hierar
 We provide:
 \begin{itemize}
 	\item A set of models for dealing with dependent binomial data, including data generation functions.
-	\item A set of diagnostic tests for assessing the validity of each model for new data.
+	\item A set of diagnostic tests for assessing the validity of each model for a novel dataset.
 	\item A framework for assessing the usefulness of each model against relevant loss functions for RTB problems.
-	\item Decision rules to optimise the explore-exploit trade off in an RTB campaigns.
+	\item Decision rules to optimise the explore-exploit trade off in RTB campaigns.
 \end{itemize}
 
 
@@ -40,7 +40,7 @@ We define 7 models to fit the data, ultimately intending to model acquisitions.
 
 We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We then bring in intermediate clicks, hoping these can offer more information on the likelihood of future acqusitions. We find that clicks provide no information on acquisitions unless there is a dependency between p and q. We consider both a cluster model as well as a correlation model to model dependency between p and q.
 
-\subsection{Model 1 - 'pooled'} 
+\subsection{Model 1 - 'Single Binomial'} 
 All levers are assumed to have the same payoff function. A useful baseline model. We assume a uniform Beta prior so that the MAP estimate of r is equivlanet to the MLE and is also an unbiased estimator. We gain as much information about lever 1 by looking at lever 2 as by looking at lever 1.
 
   \begin{align}
@@ -48,7 +48,7 @@ All levers are assumed to have the same payoff function. A useful baseline model
 	\pi(r) = Beta(1,1)
   \end{align}
 
-\subsection{Model 2 - 'independent estimation'} 
+\subsection{Model 2 - 'Independent Binomials'} 
 We assume that each lever has a completely independent payoff function. There is no information to be gained about lever 1 by looking at lever 2.
 
   \begin{align}
@@ -56,7 +56,7 @@ We assume that each lever has a completely independent payoff function. There is
 	\pi(r_i) = Beta(1,1)
   \end{align}
 
-\subsection{Model 3 - 'hierarchical estimation'} 
+\subsection{Model 3 - 'Beta-binomial'} 
 Useful if data is over dispersed for a binomial model. Here we assume a hierarchical model where the conversion rate for each lever is sampled from a Beta distribution with common $\alpha$, $\beta$ parameters across all levers. In a sense, this model lies somewhere between model 1 and model 2, in that data about lever 1 gives us some information about lever 2 via inference of $\alpha$, $\beta$ parameters. 
 
   \begin{align}
@@ -66,7 +66,7 @@ Useful if data is over dispersed for a binomial model. Here we assume a hierarch
 	\pi(\beta) = Unif(0,10000)
   \end{align}
 
-\subsection{Model 4 - 'Model 3 plus clicks'} 
+\subsection{Model 4 - 'Beta-binomial plus clicks'} 
 Since acquisitions are rare events, we try to gain more information about a lever be modelling the click-through-rate separately from the conversions. Similarly to model 3, CTR and CVR have a hierarchical model.
 
   \begin{align}
@@ -82,8 +82,11 @@ Since acquisitions are rare events, we try to gain more information about a leve
 
 When p and q are independent of each other, $a_i$ has distribution $Bin(p_iq_i,n)$ and $p_iq_i$ has distribution $Beta(a_i,n_i - a_i)$ (see 'Do Clicks Matter' for proof). This makes it equivalent to model 3 with different priors. The intuition here is that clicks are not informative - as much as they increase our belief in click through rate, they decrease our belief in the acquisition rate.
 
+\subsection{Model 5 - '2 cluster Binomial'} 
 
-\subsection{Model 6 - 'hierarchical estimation with clusters'}
+Useful for comparison against model 6.
+
+\subsection{Model 6 - '2 cluster Beta-binomial' }
 
 Model 4 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a beta-binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
  
@@ -121,7 +124,7 @@ Model 4 assumed that CTR and CVR are independent. Experience suggests that lever
 
 \includegraphics{GraphMod.jpg}
 
-\subsection{Model 7 - 'beta-binomial with correlation'}
+\subsection{Model 7 - 'Correlated Beta-binomial'}
 
 'Bacon With Your Eggs? Applications of a New Bivariate Beta-Binomial Distribution'
 'The Use of a Correlated Binomial Model for the Analysis of Certain Toxicological Experiments'
@@ -156,11 +159,18 @@ We use both VGAM and Stan package to get ML estimates for beta-binomial.
 
 \subsection{test 3}
 
-Assuming we reject null in test 2, due to some form of over dispersion, we check if can extend this to 2 cluster model with another LR test. Obviously we could keep testing for additional clusters. A more general approach could be to define prior penalizing large number of clusters and use VB to find optimal fit.
+LR test Model 1 vs Model 5 - 1 cluster binomial vs 2 cluster binomial. 
 
-We offer a cheap - 'are there clusters between median values'. As well as more involved full fit model using stan.
+This is a cheap - 'are there clusters between median values' test. 
 
 \subsection{test 4}
+
+Assuming we reject null in test 2, due to some form of over dispersion, we check if can extend this to 2 cluster model with another LR test. Obviously we could keep testing for additional clusters. A more general approach could be to define prior penalizing large number of clusters and use VB or Gibbs to find posterior.
+
+This is a cheap - 'are there clusters between median values' test. 
+
+
+\subsection{test 5}
 
 Use AIC and BIC for comparison between Model 6 and Model 7. These models aren't nested.
 
@@ -184,7 +194,7 @@ We look at the distribution of realized loss functions with k-fold cross validat
 
 We define 4 loss functions:
 \begin{enumerate}
-	\item Posterior likelihood of realized CVR. (See section 25.9 in the stan manual for how to use the generated quantities section to calculate posterior event probabilities.)
+	\item Posterior likelihood of realized CVR. 
 	\item Difference in conversion rate between estimated top site and true top site.
 	\item Volume weighted difference in realized CVR (relates closely to budget wasted). 
 	\item Vol weighted MSE.
@@ -207,41 +217,43 @@ We will compare the performance of our decision rules versus common MAB algorith
 \subsection{Correlation measures}
 
 % latex table generated in R 3.0.2 by xtable 1.7-3 package
-% Wed Jul 23 15:02:34 2014
+% Wed Jul 23 18:50:50 2014
 \begin{table}[ht]
 \centering
 \begin{tabular}{rlrrrrrrrr}
   \hline
  & g & Cor & IWC & logIWCc & RankCor & items & imps & glmcoef & glmsignif \\ 
   \hline
-1 & m1 & -0.01 & -0.01 & -0.01 & 0.07 & 1633 & 15754159 & 0.12 & 0.00 \\ 
-  2 & m\_1023111 & -0.07 & 0.03 & 0.10 & 0.20 & 191 & 23228621 & -0.00 & 0.93 \\ 
-  3 & m3 & 0.01 & -0.00 & -0.04 & 0.00 & 333 & 11517810 & -0.04 & 0.36 \\ 
-  4 & m5 & 0.17 & 0.06 & 0.39 & 0.27 & 339 & 10444526 & 0.61 & 0.00 \\ 
+1 & m1 & -0.03 & -0.00 & -0.01 & 0.01 & 1681 & 12946112 & 0.12 & 0.00 \\ 
+  2 & m\_1023111 & -0.07 & 0.03 & 0.10 & 0.20 & 191 & 23228621 & -0.03 & 0.19 \\ 
+  3 & m3 & -0.07 & -0.02 & -0.13 & -0.09 & 364 & 13079687 & -0.10 & 0.01 \\ 
+  4 & m5 & 0.14 & 0.05 & 0.37 & 0.27 & 324 & 12815129 & 0.76 & 0.00 \\ 
+  5 & m6 & 0.03 & 0.04 & 0.23 & 0.05 & 319 & 12743695 & 0.22 & 0.00 \\ 
    \hline
 \end{tabular}
 \end{table}
+
 
 \subsection{Diagnostic tests}
 
 TODO - cluster test fails to identify model 5.
-
+TODO - vgam library has problems fitting non betabinom cluster data.
 % latex table generated in R 3.0.2 by xtable 1.7-3 package
-% Wed Jul 23 15:00:10 2014
+% Wed Jul 23 18:51:42 2014
 \begin{table}[ht]
 \centering
-\begin{tabular}{rlrrr}
+\begin{tabular}{rlrrrl}
   \hline
- & g & test1\_BinomGoF & test2\_BinomVsBetaBinom & test3\_1clustVs2Clust \\ 
+ & g & test1\_BinomGoF & test2\_BinomVsBetaBinom & test3\_2ClustBinom & test4\_2ClustBetaBinom \\ 
   \hline
-1 & m1 & 1.00 & 1.00 & 1.00 \\ 
-  2 & m\_1023111 & 0.00 & 0.00 & 1.00 \\ 
-  3 & m3 & 0.00 & 0.00 & 1.00 \\ 
-  4 & m5 & 0.00 & 0.00 & 1.00 \\ 
+1 & m1 & 1.00 & 1.00 & 1.00 & Error \\ 
+  2 & m\_1023111 & 0.00 & 0.00 & 1.00 & Error \\ 
+  3 & m3 & 0.00 & 0.00 & 1.00 & Error \\ 
+  4 & m5 & 0.00 & 0.00 & 1.00 & Error \\ 
+  5 & m6 & 0.00 & 0.00 & 0.00 & 0 \\ 
    \hline
 \end{tabular}
 \end{table}
-
 
 \subsection{Performance tests}
 

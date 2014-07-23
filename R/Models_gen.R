@@ -71,6 +71,24 @@ adtk.m5 <- function(num,p,q,theta){
   d
 }
 
+##############################
+## Model 6 - beta binomial clusters 
+##############################
+
+adtk.m6 <- function(num,s1p,s2p,s1q,s2q,theta){
+  
+  n <- sample(site_domain$imps,size=num,replace=TRUE)
+  clust <- rbinom(n=num,size=1,prob=theta)
+  c <- rbetabinom.ab(n=num,size=n,shape1=s1p[clust+1],shape2=s2p[clust+1]) 
+  a <- rbetabinom.ab(n=num,size=c,shape1=s1q[clust+1],shape2=s2q[clust+1])
+  d <- data.frame(a,c,n,clust)
+  d$p <- d$c/d$n
+  d$q <- d$a/d$c
+  d$g <- "m6"
+  d
+}
+
+
 
 ##############################
 ## Util Code

@@ -141,7 +141,33 @@ adtk.test3 <- function(k,n){
   m1 <- glm(cbind(k,n-k)~cluster,data=df,family=binomial)
   
   deviance <- -2*logLik(m0)[1] + 2*logLik(m1)[1]
+  1 - pchisq(q=deviance,df=2-1)
+}
+
+##############
+# test 4 - LR test 1 betabinom cluster vs 2 betabinom clusters.
+##############
+adtk.test4 <- function(k,n){
+  
+  rate <- k/n
+  df <- data.frame(k,n)
+  
+  # Assume median values for cutoff
+  t <- median(rate[rate>0])
+  df$cluster <- (rate>t)*1
+  
+  result <- tryCatch({
+  # Single cluster
+  m0 <- vglm(cbind(k,n-k)~1, betabinomial, data=df)
+  # 2 clusters
+  m1 <- vglm(cbind(k,n-k)~cluster,betabinomial, data=df)
+  
+  deviance <- -2*logLik(m0)[1] + 2*logLik(m1)[1]
   1 - pchisq(q=deviance,df=4-2)
+  }, error = function(err) {
+    "Error"
+  })
+  result
 }
 
 ##############

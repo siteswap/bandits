@@ -1,11 +1,20 @@
 
+Bayesian clinical trial design
+
+#########################################
+#############  25 July  #################
+#########################################
+
 Goals:
-Resolve Model 5 (binom cluster) vs Model 6 (betabinom cluster)
-Include proper cluster test code (can't use Stan!).
-GoF test for beta-binomial (similar to test 1).
-Correlation model/s
-Relate to Bayesian clinical trial design - optimized over short compaigns.
-Discussion / overview of model appraisal options.
+Implement exact test for m3 (beta-binomial).
+Goodness of fit for p values.
+Fit / test cluster model properly.
+Correlation model - gen, fit, test.
+Question - when to use LR, when use chisq.
+AIC / BIC for M6 and M7 comparison.
+Write up static loss functions.
+(optional) VB or other to find optimal cluster number
+
 
 Notes:
 So hard to get an 'exact test' for models of middling complexity.
