@@ -16,14 +16,19 @@ adtk.plot(dm3)
 adtk.plot(dm5)
 
 # Correlation tests
-adtk.corr(dmall)
+results_corr <- adtk.corr(dmall)
 
-# Frequentist style tests
-ddply(dmall[dmall$c>0,],~g,summarize,
+# Diagnostic tests
+results_diag <- ddply(dmall[dmall$c>0,],~g,summarize,
       test1_BinomGoF=adtk.test1(k=a,n=c),         # Binom
       test2_BinomVsBetaBinom=adtk.test2(k=a,n=c), # BetaBinom
       test3_1clustVs2Clust=adtk.test3(k=a,n=c)    # 2 Cluster
       )
 
 # Bayesian style posterior checks
+
+# Print results
+xtable(results_corr)
+xtable(results_diag)
+
 

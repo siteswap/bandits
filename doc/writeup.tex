@@ -190,6 +190,8 @@ We define 4 loss functions:
 	\item Vol weighted MSE.
 \end{enumerate}
 
+\section{ Decision rules }
+
 \section{ Performance testing - online }
 
 We now turn this in to the online problem. In contrast to the existing MAB literature, which tends to focus on asymptotic results, we are interested in the performance over finite trials.
@@ -256,9 +258,11 @@ TODO - cluster test fails to identify model 5.
 
 \pagebreak
 
-\section{Do Clicks Matter}
+\section{Appendix}
 
-\subsection{Distribution of a conditioned on n}
+\subsection{Do Clicks Matter}
+
+\subsubsection{Distribution of a conditioned on n}
 
 Firstly note that:
 
@@ -286,7 +290,7 @@ Try to pull out a binomial by reparameterizing with $ w = c-a$:
 
 Ref: http://math.stackexchange.com/questions/626457/conditional-binomials
 
-\subsection{Posterior of qp}
+\subsubsection{Posterior of qp}
 
 We have now established that a is distributed as $Bin(qp,v)$. The question remains whether the uncertainty around the parameterization qp is reduced by modelling q and p separately.
 
