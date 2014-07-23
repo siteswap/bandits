@@ -7,9 +7,22 @@
 \tableofcontents
 \pagebreak
 
-We provide a set of models for dealing with dependent binomial data in an RTB setting. We also provide a set of tests for assessing the validity of each model to new data as well as example data for testing.
+\section{Introduction}
 
-We also provide decision rules to optimise campaign targets in an RTB setting.
+The work focuses on the relationships between dependent binomial variables, with the intention of modelling K-stage binomial processes and offering improved decision rules for MAB style problems.
+
+So far we have assumed each 'lever' to be a website. Though models could just as well apply to a particular placement or creative.
+
+We hope that the models can be further expanded to include a more complex hierarchy, for example, campaign-site-placement. Or could dependencies on for example, fixed effect regressors for creative or user category.
+
+We provide:
+\begin{itemize}
+	\item A set of models for dealing with dependent binomial data, including data generation functions.
+	\item A set of diagnostic tests for assessing the validity of each model for new data.
+	\item A framework for assessing the usefulness of each model against relevant loss functions for RTB problems.
+	\item Decision rules to optimise the explore-exploit trade off in an RTB campaigns.
+\end{itemize}
+
 
 \section{Data}
 
@@ -23,7 +36,9 @@ We have 3 vector valued random variables. The ith index represents the values fo
 TODO - bring in relevant sections of EDA document here.
 
 \section{Models}
-We define 7 models to fit the data:
+We define 7 models to fit the data, ultimately intending to model acquisitions.
+
+We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We then bring in intermediate clicks, hoping these can offer more information on the likelihood of future acqusitions. We find that clicks provide no information on acquisitions unless there is a dependency between p and q. We consider both a cluster model as well as a correlation model to model dependency between p and q.
 
 \subsection{Model 1 - 'pooled'} 
 All levers are assumed to have the same payoff function. A useful baseline model. We assume a uniform Beta prior so that the MAP estimate of r is equivlanet to the MLE and is also an unbiased estimator. We gain as much information about lever 1 by looking at lever 2 as by looking at lever 1.
@@ -155,7 +170,7 @@ Similar to the goodness of fit checks, these let us compare our model against ob
 
 \subsubsection{Bayesian p-values}
 
-If we can choose a scalar test statistic, we can produce a p value of realized statistic versus model theoretic probably of the statistic being more extreme than that. Not an obvious candidate unless we can use some sort of loss function?
+If we can choose a scalar test statistic, we can produce a p value of realized statistic versus model theoretic probably of the statistic being more extreme than that. Not an obvious candidate.
 
 \subsubsection{Chi-square GoF}
 
@@ -165,7 +180,7 @@ Possibly very useful, need to be careful about the validity of the approximation
 
 The previous diagnostic tests can help us build a probability model. Ultimately, we are interested in making optimal decisions with a certain loss function. 
 
-We look at the distribution of realized loss functions with k-fold cross validation. And compare the Advanced data under each of our proposal models, and benchmark this against the results of the generated data.
+We look at the distribution of realized loss functions with k-fold cross validation. And compare the Advance data under each of our proposal models, and benchmark this against the results of the generated data.
 
 We define 4 loss functions:
 \begin{enumerate}
@@ -183,9 +198,52 @@ We first look at the changes in the realized and expected loss functions, given 
 
 We will compare this with some theory from Bayesian medical trial design. Given this investigative work, we will provide a framework for generating optimal decisions in the MAB problem. These may be rules specific to the loss function and model, or it may be a framework to generate them computiationally.
 
-We will compare the performance of our decision rules versus common MAB algorithms.
+We will compare the performance of our decision rules versus common MAB algorithms and online learning algorithms.
 
 \section{Results}
+
+\subsection{Correlation measures}
+
+% latex table generated in R 3.0.2 by xtable 1.7-3 package
+% Wed Jul 23 15:02:34 2014
+\begin{table}[ht]
+\centering
+\begin{tabular}{rlrrrrrrrr}
+  \hline
+ & g & Cor & IWC & logIWCc & RankCor & items & imps & glmcoef & glmsignif \\ 
+  \hline
+1 & m1 & -0.01 & -0.01 & -0.01 & 0.07 & 1633 & 15754159 & 0.12 & 0.00 \\ 
+  2 & m\_1023111 & -0.07 & 0.03 & 0.10 & 0.20 & 191 & 23228621 & -0.00 & 0.93 \\ 
+  3 & m3 & 0.01 & -0.00 & -0.04 & 0.00 & 333 & 11517810 & -0.04 & 0.36 \\ 
+  4 & m5 & 0.17 & 0.06 & 0.39 & 0.27 & 339 & 10444526 & 0.61 & 0.00 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\subsection{Diagnostic tests}
+
+TODO - cluster test fails to identify model 5.
+
+% latex table generated in R 3.0.2 by xtable 1.7-3 package
+% Wed Jul 23 15:00:10 2014
+\begin{table}[ht]
+\centering
+\begin{tabular}{rlrrr}
+  \hline
+ & g & test1\_BinomGoF & test2\_BinomVsBetaBinom & test3\_1clustVs2Clust \\ 
+  \hline
+1 & m1 & 1.00 & 1.00 & 1.00 \\ 
+  2 & m\_1023111 & 0.00 & 0.00 & 1.00 \\ 
+  3 & m3 & 0.00 & 0.00 & 1.00 \\ 
+  4 & m5 & 0.00 & 0.00 & 1.00 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+
+\subsection{Performance tests}
+
+\section{Conclusions}
 
 \begin{itemize}
 	\item Need to use log values of p.
@@ -196,6 +254,7 @@ We will compare the performance of our decision rules versus common MAB algorith
 	\item Binomial GLM does the best job of (4), though does not consider error in dependent variable.
 \end{itemize}
 
+\pagebreak
 
 \section{Do Clicks Matter}
 

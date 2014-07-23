@@ -27,5 +27,3 @@ ddply(dmall[dmall$c>0,],~g,summarize,
 
 # Bayesian style posterior checks
 
-
-

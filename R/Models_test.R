@@ -11,14 +11,22 @@ adtk.corr <- function(d){
 
 	results <- ddply(d[d$c>0,],~g,summarize,
       		Cor=cor(a/c,c/n),
-		ImpWeigthedCor=.wcor(a/c,c/n,n),
-		liwc=.wcor(a/c,log(c/n),n),
+		IWC=.wcor(a/c,c/n,n),
+		logIWCc=.wcor(a/c,log(c/n),n),
 		RankCor=cor(a/c,c/n,method="spearman"),
 		items=length(n),imps=sum(n))
 	
-	regression <- glm(cbind(a,c-a)~log(p),data=d[d$c>0,],family=binomial)
-	results$glmcoef <- coef(regression)[2]
-	# TODO - include significance	
+  coeffs <- c()
+	signifs <- c()
+  for(g in unique(d$g)){
+    fit <- glm(cbind(a,c-a)~log(p),data=d[(d$c>0) & (d$g==g) ,],family=binomial)
+    sc <- summary(fit)$coefficients
+    coeffs <- append(coeffs, sc["log(p)","Estimate"])
+    signifs <- append(signifs, sc["log(p)","Pr(>|z|)"])
+  }
+  
+	results$glmcoef <- coeffs
+	results$glmsignif <- signifs
 	results
 }
 
