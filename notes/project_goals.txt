@@ -1,4 +1,15 @@
 
+Goals:
+Resolve Model 5 (binom cluster) vs Model 6 (betabinom cluster)
+Include proper cluster test code (can't use Stan!).
+GoF test for beta-binomial (similar to test 1).
+Correlation model/s
+Relate to Bayesian clinical trial design - optimized over short compaigns.
+Discussion / overview of model appraisal options.
+
+Notes:
+So hard to get an 'exact test' for models of middling complexity.
+
 #########################################
 #############  18 July  #################
 #########################################
@@ -6,9 +17,10 @@
 Goals:
 
 Produce 'results' section.
-Include very short EDA section as motivation.
+Include very short EDA section as motivation in the 'data' section.
 Write up posterior mean loss with CV.
 Leave proper LR test of clusters - use Gibbs for this?
+Correlations model/s
 
 Done:
 

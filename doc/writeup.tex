@@ -4,6 +4,9 @@
 \date{}
 \begin{document}
 
+\tableofcontents
+\pagebreak
+
 We provide a set of models for dealing with dependent binomial data in an RTB setting. We also provide a set of tests for assessing the validity of each model to new data as well as example data for testing.
 
 We also provide decision rules to optimise campaign targets in an RTB setting.
@@ -16,6 +19,8 @@ We have 3 vector valued random variables. The ith index represents the values fo
 	\item \textbf{c} - number of clicks on impressions over same time period 
 	\item \textbf{a} - number of acquisitions over same time period
 \end{itemize}
+
+TODO - bring in relevant sections of EDA document here.
 
 \section{Models}
 We define 7 models to fit the data:
@@ -111,7 +116,7 @@ As an alternative to model 6, where rate prediction will change abruptly between
 
 We use a relatively unused binomial correlation model, discussed in 'Bacon With Your Eggs? Applications of a New Bivariate Beta-Binomial Distribution'. 
 
-\section{Testing}
+\section{Diagnostic testing}
 
 We take the approach of starting with a simple model and run further tests to decide whether there is evidence to expand the model. 
 
@@ -144,24 +149,43 @@ We offer a cheap - 'are there clusters between median values'. As well as more i
 
 Use AIC and BIC for comparison between Model 6 and Model 7. These models aren't nested.
 
-\subsection{Posterior checks}
+\subsection{Posterior predictive checks}
 
-Complementary to the information criteria.
+Similar to the goodness of fit checks, these let us compare our model against observed data. First can use the generating functions to visuallly compare.
 
-We will run the same tests on both an artificially generated dataset, as well as historical data from an Advance campaign.
+\subsubsection{Bayesian p-values}
 
-The data from is randomly split between train and test datasets. Each model is fit using the training dataset and predictions compared against test data.
+If we can choose a scalar test statistic, we can produce a p value of realized statistic versus model theoretic probably of the statistic being more extreme than that. Not an obvious candidate unless we can use some sort of loss function?
 
-We define 3 loss functions:
+\subsubsection{Chi-square GoF}
+
+Possibly very useful, need to be careful about the validity of the approximation given some small n.
+
+\section{ Performance testing - static loss functions }
+
+The previous diagnostic tests can help us build a probability model. Ultimately, we are interested in making optimal decisions with a certain loss function. 
+
+We look at the distribution of realized loss functions with k-fold cross validation. And compare the Advanced data under each of our proposal models, and benchmark this against the results of the generated data.
+
+We define 4 loss functions:
 \begin{enumerate}
 	\item Posterior likelihood of realized CVR. (See section 25.9 in the stan manual for how to use the generated quantities section to calculate posterior event probabilities.)
+	\item Difference in conversion rate between estimated top site and true top site.
 	\item Volume weighted difference in realized CVR (relates closely to budget wasted). 
 	\item Vol weighted MSE.
 \end{enumerate}
 
+\section{ Performance testing - online }
+
+We now turn this in to the online problem. In contrast to the existing MAB literature, which tends to focus on asymptotic results, we are interested in the performance over finite trials.
+
+We first look at the changes in the realized and expected loss functions, given varying sizes of initial trials. With this, we can estimate the value of exploration. It would be great if we could do this analytically, but I suspect this would be very tricky. 
+
+We will compare this with some theory from Bayesian medical trial design. Given this investigative work, we will provide a framework for generating optimal decisions in the MAB problem. These may be rules specific to the loss function and model, or it may be a framework to generate them computiationally.
+
+We will compare the performance of our decision rules versus common MAB algorithms.
 
 \section{Results}
-
 
 \begin{itemize}
 	\item Need to use log values of p.
@@ -173,13 +197,6 @@ We define 3 loss functions:
 \end{itemize}
 
 
-
-
-\section{Fitting Models}
-
-For each model, we will generate a sample from the posterior distribution using the Stan modelling language.
-
-If this becomes computationally infeasible, we may use point estimates or approximate inference techniques.
 \section{Do Clicks Matter}
 
 \subsection{Distribution of a conditioned on n}

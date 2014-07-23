@@ -1,32 +1,31 @@
 
+source('~/git/bandits/R/Models_gen.R')
+source('~/git/bandits/R/Models_test.R')
+
 # Plot example data ( 100,000 points is similar to the data )
 
-dm1 <- rm1(num=100000,p=0.001,q=0.6) 
-dm1$g <- "dm1"
-dm3 <- rm3(num=100000)
-dm3$g <- "dm3"
-dm5 <- rm5(num=100000,p=c(0.0005,0.00005),q=c(0.8,0.2),theta=0.9)
-dm5$g <- "dm5"
+dmadv <- adtk.adv()
+dm1 <- adtk.m1(num=100000,p=0.001,q=0.6) 
+dm3 <- adtk.m3(num=100000)
+dm5 <- adtk.m5(num=100000,p=c(0.0005,0.00005),q=c(0.8,0.2),theta=0.9)
+dmall <- rbind(dmadv[,-1],dm1,dm3,dm5[,-4])
 
-ggplot(data=dm1) +
-  aes(x = log(a/c), y = log(c/n)) +
-  geom_point(aes(size = log(n),alpha = 0.3))
-
-ggplot(data=dm3) +
-  aes(x = log(a/c), y = log(c/n)) +
-  geom_point(aes(size = log(n),alpha = 0.3))
-
-ggplot(data=dm5) +
-  aes(x = log(a/c), y = log(c/n)) +
-  geom_point(aes(size = log(n),alpha = 0.3, 
-	color=as.factor(c("good","bad"))[clust+1]))
+adtk.plot(dmadv)
+adtk.plot(dm1)
+adtk.plot(dm3)
+adtk.plot(dm5)
 
 # Correlation tests
-corr(rbind(dm1,dm3,dm5))
+adtk.corr(dmall)
 
-ggplot(data=d) + 
-  aes(x = log(a/c), y = log(c/n)) +
-  geom_point(aes(size = log(n),alpha = 0.3, color=as.factor(c("good","bad"))[cluster+1]))
+# Frequentist style tests
+ddply(dmall[dmall$c>0,],~g,summarize,
+      test1_BinomGoF=adtk.test1(k=a,n=c),         # Binom
+      test2_BinomVsBetaBinom=adtk.test2(k=a,n=c), # BetaBinom
+      test3_1clustVs2Clust=adtk.test3(k=a,n=c)    # 2 Cluster
+      )
+
+# Bayesian style posterior checks
 
 
 

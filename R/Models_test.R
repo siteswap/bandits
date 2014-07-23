@@ -12,7 +12,7 @@ adtk.corr <- function(d){
 	results <- ddply(d[d$c>0,],~g,summarize,
       		Cor=cor(a/c,c/n),
 		ImpWeigthedCor=.wcor(a/c,c/n,n),
-		liwc=wcor(a/c,log(c/n),n),
+		liwc=.wcor(a/c,log(c/n),n),
 		RankCor=cor(a/c,c/n,method="spearman"),
 		items=length(n),imps=sum(n))
 	
@@ -81,7 +81,7 @@ adtk.test2 <- function(k,n,method="vglm"){
   }
 
 # TODO - treat with lazy singleton evaluation.
-.bb_model <- stan_model(model_code='data {
+.bb_code='data {
     int<lower=1> N;          // Datapoints
     int<lower=0> a[N];       // aqs
     int<lower=1> c[N];       // views
@@ -93,7 +93,7 @@ adtk.test2 <- function(k,n,method="vglm"){
   model {
     // Need to keep the explicit addition to get the real value of lp__
     increment_log_prob(beta_binomial_log(a,c,alpha,beta));
-  }')
+  }'
 
 # We see the optimisation takes alpha as high as possible to minimize variance
 # then beta is chosen to get the correct mean -> as values go larger,
@@ -104,7 +104,8 @@ adtk.test2 <- function(k,n,method="vglm"){
   L0 <- sum( dbinom(k,size=n,prob=p0,log=TRUE) )
   
   bb_dat <- list(N=length(k), a=k, c=n)
-  
+ 
+  bb_model <- stan_model(model_code=.bb_code)
   opt <- optimizing(object=.bb_model, data=bb_dat, algorithm="BFGS")
   L1 <- opt$value
 
@@ -117,18 +118,22 @@ adtk.test2 <- function(k,n,method="vglm"){
 ##############
 # test 3 - LR test 1 binom cluster vs 2 binom clusters.
 ##############
-adtk.test3 <- function(d){
+adtk.test3 <- function(k,n){
 
+  rate <- k/n
+  df <- data.frame(k,n)
+  
   # Assume median values for cutoff
-  t <- median(d$p[d$p>0])
-  d$cluster <- (d$p>t)*1
+  t <- median(rate[rate>0])
+  df$cluster <- (rate>t)*1
   
   # Single cluster
-  m0 <- glm(cbind(a,c-a)~1,data=d,family=binomial)
+  m0 <- glm(cbind(k,n-k)~1,data=df,family=binomial)
   # 2 clusters
-  m1 <- glm(cbind(a,c-a)~cluster,data=d,family=binomial)
+  m1 <- glm(cbind(k,n-k)~cluster,data=df,family=binomial)
   
-  logLik(m1)[1]/logLik(m0)[1]
+  deviance <- -2*logLik(m0)[1] + 2*logLik(m1)[1]
+  1 - pchisq(q=deviance,df=4-2)
 }
 
 ##############
