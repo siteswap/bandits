@@ -1,19 +1,18 @@
 
-adtk.mab <- function (arms=5,campaignLen=1000,a=6,b=10,decision="ts") {
+adtk.mab <- function(arms=5,campaignLen=1000,a=6,b=10,DFUN=adtk.ts) {
   
   trueVals <- rbeta(arms,shape1=a,shape2=b)       # levers
   pst <- data.frame(a=rep(1,arms),b=rep(1,arms))  # posteriors
   armChoices <- rep(0,campaignLen)
   loss <- data.frame(loss1=rep(0,campaignLen))
   
-  adtk.mabplot( list(arms=arms,armChoices=armChoices,pst=pst,trueVals=trueVals,round=0) )
+  mab <- list(arms=arms,armChoices=armChoices,pst=pst,trueVals=trueVals,round=0)
+  adtk.mabplot( mab )
   
   for(round in 1:campaignLen){
   
-    if(decision=="ts"){
-      arm <- adtk.ts(pst,arms)
-    }
-    
+    mab <- list(arms=arms,armChoices=armChoices,pst=pst,trueVals=trueVals,round=round)
+    arm <- DFUN(mab)
     armChoices[round] <- arm
     result <- rbinom(1,size=1,prob=trueVals[arm])
     
@@ -24,20 +23,25 @@ adtk.mab <- function (arms=5,campaignLen=1000,a=6,b=10,decision="ts") {
     # Calc loss functions / KL div
     loss[round,"loss1"] <- (sum(pst$a) - arms)/(sum(pst$a) + sum(pst$b) - 2*arms)
 
+    mab <- list(arms=arms,armChoices=armChoices,pst=pst,trueVals=trueVals,round=round)
     if(0==(round %% 100)){
-      adtk.mabplot( list(arms=arms,armChoices=armChoices,pst=pst,trueVals=trueVals,round=round) )
+      adtk.mabplot( mab )
     }
   }
   
-  list(arms=arms,armChoices=armChoices,
+  mab <- list(arms=arms,armChoices=armChoices,
         pst=pst,trueVals=trueVals,round=campaignLen,loss=loss)
+  
+  return(mab)
 }
 
 # Thompson - choose according to how frequently arm is maximum.
 # Achieve this through sampling rather than integral
-adtk.ts <- function(pst,arms){
+adtk.ts <- function(mab){
   
   # Sample from posterior
+  pst <- mab$pst
+  arms <- mab$arms
   samples <- 100
   s <- matrix(rbeta(arms*samples,shape1=pst$a,shape2=pst$b),nrow=arms)
   best <- apply(X=s,MARGIN=2,FUN=function(x){which(x==max(x))})
@@ -47,12 +51,31 @@ adtk.ts <- function(pst,arms){
   sample(1:arms,size=1,prob=probs)
 }
 
+# UCB1 - P. Auer, N. Cesa-Bianchi, and P. Fischer
+# Experimentally, this explore too much and does not converge.
+# Need to review derivation of rule.
+adtk.ucb <- function(mab){
+  
+  # Action that maximizes xbar_j + sqrt(2*ln(n)/n_j)
+  n <- mab$round
+  kj <- pst$a - 1
+  nj <- pst$a + pst$b - 2
+  
+  # Pull each lever atleast once
+  if(any(nj==0)){ return( which(nj==0)[1] )} 
+  
+  x <- kj/nj + sqrt(2*log(n)/nj)
+  
+  # Randomize choie when levers are equal
+  sample(which(x==max(x)),size=1) 
+}
+
 adtk.mabplot <- function(ts,method=""){
   
   if(method=="loss"){
     
     par(mfrow=c(1,1))
-    plot(ts$loss$loss1,type='l',ylim=c(0,1))
+    plot(ts$loss$loss1,type='l',ylim=c(0,1),ylab("mean achieved"))
     abline(h=max(ts$trueVals),col="red")  
     
   }else{
