@@ -1,29 +1,33 @@
+library(plyr)
 
-
-adtk.mab <- function(arms=5,campaignLen=1000,a=6,b=10,DFUN=adtk.ts) {
+adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,trueVals=c()) {
   
-  trueVals <- rbeta(arms,shape1=a,shape2=b)       # levers
+  if( length(trueVals)==0 ){ 
+    trueVals <- data.frame(q=rbeta(arms,shape1=5,shape2=10),
+                           p=rbeta(arms,shape1=5,shape2=5))
+  }  
+  
   res <- data.frame(a=rep(0,arms),c=rep(0,arms),n=rep(0,arms))  # results
   armChoices <- rep(0,campaignLen)
   loss <- data.frame(loss1=rep(0,campaignLen))
   
   mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=0)
-  adtk.mabplot( mab )
+  adtk.mabplot( mab, method="arms" )
   
   for(round in 1:campaignLen){
-  
+    
     mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=round)
     arm <- DFUN(mab)
     armChoices[round] <- arm
-    res[arm,"a"] <- res[arm,"a"] + rbinom(1,size=1,prob=trueVals[arm])
-    res[arm,"n"] <- res[arm,"n"] + 1
+    
+    res[arm,] <- res[arm,] + MFUN(trueVals[arm,]) # c(a,c,1)
     
     # Calc loss functions / KL div
     loss[round,"loss1"] <- sum(res$a)/sum(res$n)
-
+    
     mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=round)
     if(0==(round %% 100)){
-      adtk.mabplot( mab )
+      adtk.mabplot( mab, method="arms" )
     }
   }
   
@@ -33,21 +37,29 @@ adtk.mab <- function(arms=5,campaignLen=1000,a=6,b=10,DFUN=adtk.ts) {
   return(mab)
 }
 
+# Documented model 4.
+adtk.m4 <- function(vals){
+  c <- rbinom(1,1,vals$p)
+  a <- rbinom(1,c,vals$q)
+  c(a,c,1)
+}
+
 # Thompson - choose according to how frequently arm is maximum.
 # Achieve this through sampling rather than integral
-adtk.ts <- function(mab){
+adtk.ts <- function(arms,k,n){
   
   # Sample from posterior
-  res <- mab$res
-  arms <- mab$arms
   samples <- 100
-  s <- matrix(rbeta(arms*samples,shape1=(1 + res$a),shape2=(1 + res$n - res$a)),nrow=arms)
+  s <- matrix(rbeta(arms*samples,shape1=(1 + k),shape2=(1 + n - k)),nrow=arms)
   best <- apply(X=s,MARGIN=2,FUN=function(x){which(x==max(x))})
   df <- rbind(data.frame(g=best,c=1),data.frame(g=1:arms,c=0))
   probs <- ddply(df,~g,summarise,freq=sum(c))$freq/samples
   
   sample(1:arms,size=1,prob=probs)
 }
+
+adtk.ts_acqs <- function(mab){ adtk.ts(mab$arms,mab$res$a,mab$res$n) }
+adtk.ts_clicks <- function(mab){ adtk.ts(mab$arms,mab$res$c,mab$res$n) }
 
 # UCB1 - P. Auer, N. Cesa-Bianchi, and P. Fischer
 # Experimentally, this explore too much and does not converge.
@@ -68,16 +80,17 @@ adtk.ucb <- function(mab){
   sample(which(x==max(x)),size=1) 
 }
 
-adtk.mabplot <- function(ts,method=""){
+adtk.mabplot <- function(ts,method="loss"){
   
   if(method=="loss"){
     
-    par(mfrow=c(1,1))
-    plot(ts$loss$loss1,type='l',ylim=c(0,1),ylab="mean achieved")
-    abline(h=max(ts$trueVals),col="red")  
+    truev <- ts$trueVals$q * ts$trueVals$p
+    plot(ts$loss$loss1,type='l',ylim=c(0,max(truev)*1.2),ylab="mean achieved")
     
-  }else{
-  
+    abline(h=max(truev),col="red")  
+    
+  }else if (method=="arms"){
+    
     nplot <- min(ts$arms,5)
     xvals <- seq(0,1,0.001)
     par(mfrow=c(nplot,1))
@@ -87,18 +100,12 @@ adtk.mabplot <- function(ts,method=""){
                            shape2=1 + ts$res[a,"n"] - ts$res[a,"a"]),
            type='l',
            ylab="density")
-      abline(v=ts$trueVals[a],col="red")  
+      truev <- ts$trueVals$q * ts$trueVals$p
+      abline(v=truev[a],col="red")  
       if(a==1){ title(paste("First 5 arms, round: ",ts$round)) }
     }
-  
+    
   }
 }
 
-
-# 1. one only tries to maximise number of clicks, ignoring conversions
-
-# 2. one only tries to maximise number of conversions, ignoring clicks
-
-# 3. one tries to maximise number of conversions, considering clicks as well, assuming however, 
-#     that the two rates are independent (formulate the model carefully and extract a confidence interval for UCB). 
 
