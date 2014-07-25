@@ -7,9 +7,12 @@ adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,true
                            p=rbeta(arms,shape1=5,shape2=5))
   }  
   
+  qp <- trueVals$q*trueVals$p
+  oracle <- max(qp)
+  
   res <- data.frame(a=rep(0,arms),c=rep(0,arms),n=rep(0,arms))  # results
   armChoices <- rep(0,campaignLen)
-  loss <- data.frame(loss1=rep(0,campaignLen))
+  metrics <- data.frame(aqr=rep(0,campaignLen),regret=rep(0,campaignLen))
   
   mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=0)
   adtk.mabplot( mab, method="arms" )
@@ -23,7 +26,9 @@ adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,true
     res[arm,] <- res[arm,] + MFUN(trueVals[arm,]) # c(a,c,1)
     
     # Calc loss functions / KL div
-    loss[round,"loss1"] <- sum(res$a)/sum(res$n)
+    metrics[round,"aqr"] <- sum(res$a)/sum(res$n)
+    metrics[round,"regret"] <- -1*mean(qp[armChoices[1:round]] - oracle)
+    # Regret hould be less noisy than realized aqr
     
     mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=round)
     if(0==(round %% 100)){
@@ -32,7 +37,7 @@ adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,true
   }
   
   mab <- list(arms=arms,armChoices=armChoices,
-              res=res,trueVals=trueVals,round=campaignLen,loss=loss)
+              res=res,trueVals=trueVals,round=campaignLen,metrics=metrics)
   
   return(mab)
 }
@@ -45,6 +50,8 @@ adtk.m4 <- function(vals){
 }
 
 # Thompson - choose according to how frequently arm is maximum.
+
+
 # Achieve this through sampling rather than integral
 adtk.ts <- function(arms,k,n){
   
@@ -60,6 +67,30 @@ adtk.ts <- function(arms,k,n){
 
 adtk.ts_acqs <- function(mab){ adtk.ts(mab$arms,mab$res$a,mab$res$n) }
 adtk.ts_clicks <- function(mab){ adtk.ts(mab$arms,mab$res$c,mab$res$n) }
+
+
+adtk.ts_both <- function(mab){ # TODO - much duplicate code 
+  
+  # The 
+  a <- mab$res$a
+  c <- mab$res$c
+  n <- mab$res$n
+  
+  # For each arm:
+  samples <- 100
+  p <- rbeta(arms*samples,shape1=(c+1),shape2=(n-c+1)) # Flat prior on clicks
+  s1 <- 5   # Strong prior on q TODO - parameterize this
+  s2 <- 100 # Strong prior on q TODO - parameterize this
+  q <- rbeta(arms*samples,shape1=a+s1,shape2=(c-a+s2))
+  pq <- p*q
+  s <- matrix(pq,nrow=arms)
+  # return vectors of probs where pq is higher of all arms.
+  best <- apply(X=s,MARGIN=2,FUN=function(x){which(x==max(x))})
+  df <- rbind(data.frame(g=best,c=1),data.frame(g=1:arms,c=0))
+  probs <- ddply(df,~g,summarise,freq=sum(c))$freq/samples
+  
+  sample(1:arms,size=1,prob=probs)
+}
 
 # UCB1 - P. Auer, N. Cesa-Bianchi, and P. Fischer
 # Experimentally, this explore too much and does not converge.
@@ -80,12 +111,12 @@ adtk.ucb <- function(mab){
   sample(which(x==max(x)),size=1) 
 }
 
-adtk.mabplot <- function(ts,method="loss"){
+adtk.mabplot <- function(ts,method="aqr"){
   
-  if(method=="loss"){
+  if(method=="aqr"){
     
     truev <- ts$trueVals$q * ts$trueVals$p
-    plot(ts$loss$loss1,type='l',ylim=c(0,max(truev)*1.2),ylab="mean achieved")
+    plot(ts$metrics$aqr,type='l',ylim=c(0,max(truev)*1.2),ylab="mean achieved")
     
     abline(h=max(truev),col="red")  
     
