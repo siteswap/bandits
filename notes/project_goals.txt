@@ -7,10 +7,10 @@ Bayesian clinical trial design
 
 Goals:
 Implement exact test for m3 (beta-binomial).
-Goodness of fit for p values.
+Goodness of fit for small rate values.
 Fit / test cluster model properly.
 Correlation model - gen, fit, test.
-Question - when to use LR, when use chisq.
+Clarify - when to use LR, when use chisq.
 AIC / BIC for M6 and M7 comparison.
 Write up static loss functions.
 (optional) VB or other to find optimal cluster number

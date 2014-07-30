@@ -40,7 +40,7 @@ We define 7 models to fit the data, ultimately intending to model acquisitions.
 
 We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We then bring in intermediate clicks, hoping these can offer more information on the likelihood of future acqusitions. We find that clicks provide no information on acquisitions unless there is a dependency between p and q. We consider both a cluster model as well as a correlation model to model dependency between p and q.
 
-\subsection{Model 1 - 'Single Binomial'} 
+\subsection{Model 1 - Single Binomial} 
 All levers are assumed to have the same payoff function. A useful baseline model. We assume a uniform Beta prior so that the MAP estimate of r is equivlanet to the MLE and is also an unbiased estimator. We gain as much information about lever 1 by looking at lever 2 as by looking at lever 1.
 
   \begin{align}
@@ -48,7 +48,7 @@ All levers are assumed to have the same payoff function. A useful baseline model
 	\pi(r) = Beta(1,1)
   \end{align}
 
-\subsection{Model 2 - 'Independent Binomials'} 
+\subsection{Model 2 - Independent Binomials} 
 We assume that each lever has a completely independent payoff function. There is no information to be gained about lever 1 by looking at lever 2.
 
   \begin{align}
@@ -56,7 +56,7 @@ We assume that each lever has a completely independent payoff function. There is
 	\pi(r_i) = Beta(1,1)
   \end{align}
 
-\subsection{Model 3 - 'Beta-binomial'} 
+\subsection{Model 3 - Beta-binomial} 
 Useful if data is over dispersed for a binomial model. Here we assume a hierarchical model where the conversion rate for each lever is sampled from a Beta distribution with common $\alpha$, $\beta$ parameters across all levers. In a sense, this model lies somewhere between model 1 and model 2, in that data about lever 1 gives us some information about lever 2 via inference of $\alpha$, $\beta$ parameters. 
 
   \begin{align}
@@ -66,7 +66,7 @@ Useful if data is over dispersed for a binomial model. Here we assume a hierarch
 	\pi(\beta) = Unif(0,10000)
   \end{align}
 
-\subsection{Model 4 - 'Beta-binomial plus clicks'} 
+\subsection{Model 4 - Beta-binomial plus clicks} 
 Since acquisitions are rare events, we try to gain more information about a lever be modelling the click-through-rate separately from the conversions. Similarly to model 3, CTR and CVR have a hierarchical model.
 
   \begin{align}
@@ -82,11 +82,11 @@ Since acquisitions are rare events, we try to gain more information about a leve
 
 When p and q are independent of each other, $a_i$ has distribution $Bin(p_iq_i,n)$ and $p_iq_i$ has distribution $Beta(a_i,n_i - a_i)$ (see 'Do Clicks Matter' for proof). This makes it equivalent to model 3 with different priors. The intuition here is that clicks are not informative - as much as they increase our belief in click through rate, they decrease our belief in the acquisition rate.
 
-\subsection{Model 5 - '2 cluster Binomial'} 
+\subsection{Model 5 - 2 cluster Binomial} 
 
 Useful for comparison against model 6.
 
-\subsection{Model 6 - '2 cluster Beta-binomial' }
+\subsection{Model 6 - 2 cluster Beta-binomial }
 
 Model 4 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a beta-binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
  
@@ -124,7 +124,7 @@ Model 4 assumed that CTR and CVR are independent. Experience suggests that lever
 
 \includegraphics{GraphMod.jpg}
 
-\subsection{Model 7 - 'Correlated Beta-binomial'}
+\subsection{Model 7 - Correlated Beta-binomial }
 
 'Bacon With Your Eggs? Applications of a New Bivariate Beta-Binomial Distribution'
 'The Use of a Correlated Binomial Model for the Analysis of Certain Toxicological Experiments'
