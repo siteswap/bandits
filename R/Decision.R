@@ -1,5 +1,6 @@
 library(plyr)
 
+
 adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,trueVals=c()) {
   
   if( length(trueVals)==0 ){ 
@@ -14,12 +15,12 @@ adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,true
   armChoices <- rep(0,campaignLen)
   metrics <- data.frame(aqr=rep(0,campaignLen),regret=rep(0,campaignLen))
   
-  mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=0)
+  mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=0,len=campaignLen)
   adtk.mabplot( mab, method="arms" )
   
   for(round in 1:campaignLen){
     
-    mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=round)
+    mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=round,len=campaignLen)
     arm <- DFUN(mab)
     armChoices[round] <- arm
     
@@ -109,6 +110,20 @@ adtk.ucb <- function(mab){
   
   # Randomize choie when levers are equal
   sample(which(x==max(x)),size=1) 
+}
+
+# Bayes adaptive RL
+adtk.barl <- function(mab){
+ 
+  
+  t <- mab$len - mab$round
+  betaVal <- 1+ mab$res$n - mab$res$a
+  alphaVal <- 1 + mab$res$a
+  mp <- data.frame(a=alphaVal,b=betaVal)
+  valfun <- q.all(mp,t)
+  # Where arms have equal value, choose randomly
+  # This means errors average out when taken repeatedly
+  sample(which(valfun==max(valfun)),size=1)
 }
 
 adtk.mabplot <- function(ts,method="aqr"){

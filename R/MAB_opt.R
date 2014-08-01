@@ -1,6 +1,6 @@
 
 
-L <- 2 # levers
+L <- 3 # levers
 # matrix of params
 mp <- data.frame(a=rep(1,L),b=rep(1,L))
 
@@ -79,4 +79,66 @@ a b
 # Note in a single call, we have played out every possible game
 # So we would only ever need to call the function once, if we can
 # utilise a nice cache of pre-aggregated values.
+
+# A bit of plotting - could we estimate these curves more cheaply?
+
+getVals <- function (mp,maxt) {
+  vals <- matrix(data=rep(0,maxt*3),nrow=maxt)
+  for(r in 0:(maxt-1)){
+    qvals <- q.all(mp,t=r)
+    vals[r+1,] <- qvals / sum(qvals) # sum(qvals)
+  }
+  vals
+}
+
+# Note the outcome of Arm 1 *DOES* change the order of arm2 and arm3
+# This is not true for Gittins indexes.
+
+par(mfrow=c(2,3))
+
+mp <- data.frame(a=c(1,4,7),b=c(1,3,5))
+vals <- getVals(mp,maxt=8)
+plot(vals[,1],type='l',ylim=c(min(vals),max(vals)),xlim=c(1,8),
+     main="Index value of each arm \n Prior(a=c(1,4,7),b=c(1,3,5))")
+lines(vals[,2],col="red")
+lines(vals[,3],col="blue")
+abline(v=1)
+
+# Assume we play black, under success:
+mp <- data.frame(a=c(2,4,7),b=c(1,3,5))
+valss1 <- getVals(mp,maxt=7)
+plot(x=2:8,valss1[,1],type='l',ylim=c(min(valss1),max(valss1)),xlim=c(1,8),
+     main="Under success \n Prior(a=c(2,4,7),b=c(1,3,5))")
+lines(x=2:8,valss1[,2],col="red")
+lines(x=2:8,valss1[,3],col="blue")
+abline(v=2)
+
+# Under failure:
+mp <- data.frame(a=c(1,4,7),b=c(2,3,5))
+valsf1 <- getVals(mp,maxt=7)
+plot(x=2:8,valsf1[,1],type='l',ylim=c(min(valsf1),max(valsf1)),xlim=c(1,8),
+     main="Under failure \n Prior(a=c(1,4,7),b=c(2,3,5))")
+lines(x=2:8,valsf1[,2],col="red")
+lines(x=2:8,valsf1[,3],col="blue")
+abline(v=2)
+
+# Play red, under success:
+mp <- data.frame(a=c(1,5,7),b=c(2,3,5))
+valsf1s2 <- getVals(mp,maxt=6)
+plot(x=3:8,valsf1s2[,1],type='l',ylim=c(min(valsf1s2),max(valsf1s2)),xlim=c(1,8),
+     main="Under success \n Prior(a=c(1,5,7),b=c(2,3,5))")
+lines(x=3:8,valsf1s2[,2],col="red")
+lines(x=3:8,valsf1s2[,3],col="blue")
+abline(v=3)
+
+# Play red, under failure:
+mp <- data.frame(a=c(1,4,7),b=c(2,4,5))
+valsf1f2 <- getVals(mp,maxt=6)
+plot(x=3:8,valsf1f2[,1],type='l',ylim=c(min(valsf1f2),max(valsf1f2)),xlim=c(1,8),
+     main="Under failure \n Prior(a=c(1,4,7),b=c(2,4,5))")
+lines(x=3:8,valsf1f2[,2],col="red")
+lines(x=3:8,valsf1f2[,3],col="blue")
+abline(v=3)
+
+
 
