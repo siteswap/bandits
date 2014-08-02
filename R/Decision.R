@@ -3,11 +3,6 @@ library(plyr)
 
 adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,trueVals=c()) {
   
-  if( length(trueVals)==0 ){ 
-    trueVals <- data.frame(q=rbeta(arms,shape1=5,shape2=10),
-                           p=rbeta(arms,shape1=5,shape2=5))
-  }  
-  
   qp <- trueVals$q*trueVals$p
   oracle <- max(qp)
   
@@ -81,7 +76,7 @@ adtk.ts_both <- function(mab){ # TODO - much duplicate code
   samples <- 100
   p <- rbeta(arms*samples,shape1=(c+1),shape2=(n-c+1)) # Flat prior on clicks
   s1 <- 5   # Strong prior on q TODO - parameterize this
-  s2 <- 100 # Strong prior on q TODO - parameterize this
+  s2 <- 95 # Strong prior on q TODO - parameterize this
   q <- rbeta(arms*samples,shape1=a+s1,shape2=(c-a+s2))
   pq <- p*q
   s <- matrix(pq,nrow=arms)
@@ -120,6 +115,26 @@ adtk.barl <- function(mab){
   alphaVal <- 1 + mab$res$a
   mp <- data.frame(a=alphaVal,b=betaVal)
   valfun <- q.all(mp,t)
+  # Where arms have equal value, choose randomly
+  # This means errors average out when taken repeatedly
+  equalBestArms <- which(valfun==max(valfun))
+  if(length(equalBestArms)==1){
+    return(equalBestArms)
+  } else {
+    return(sample(equalBestArms,size=1))
+  }
+}
+
+# Bayes adaptive RL
+adtk.barl_both <- function(mab){
+  
+  t <- mab$len - mab$round
+  betap <- 1 + mab$res$n - mab$res$c
+  alphap <- 1 + mab$res$c
+  betaq <- 20 + mab$res$c - mab$res$a
+  alphaq <- 10 + mab$res$a
+  mp <- data.frame(aq=alphaq,bq=betaq,ap=alphap,bp=betap)
+  valfun <- barl_both.q.all(mp,t)
   # Where arms have equal value, choose randomly
   # This means errors average out when taken repeatedly
   equalBestArms <- which(valfun==max(valfun))

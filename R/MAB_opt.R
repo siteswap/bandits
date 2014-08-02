@@ -1,4 +1,5 @@
 
+library(hash)
 
 L <- 2 # levers
 # matrix of params
