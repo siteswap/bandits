@@ -1,6 +1,6 @@
 
 
-L <- 3 # levers
+L <- 2 # levers
 # matrix of params
 mp <- data.frame(a=rep(1,L),b=rep(1,L))
 
@@ -8,6 +8,9 @@ mp <- data.frame(a=rep(1,L),b=rep(1,L))
 p <- function(l,mp){
   mp[l,"a"]/(mp[l,"a"]+mp[l,"b"])
 }
+
+# Init hash
+h <- hash()
 
 # Quality of lever l, with t trials ahead.
 q <- function(l,mp,t){
@@ -23,12 +26,24 @@ q <- function(l,mp,t){
     # Quality under success
     mp$a[l]  <- mp$a[l] + 1
     # sq <- max(q(1,mp,t-1),q(2,mp,t-1))
-    sq <- max(sapply(1:L,FUN=q,mp=mp,t=t-1))
+    k <- toString(c(mp,t-1))
+    if(has.key(k,h)){
+      sq <- unname(values(h,keys=k))
+    }else{
+      sq <- max(sapply(1:L,FUN=q,mp=mp,t=t-1))
+      h[k] <- sq
+    }
     
     # Quality under failure
     mp$a[l]  <- mp$a[l] - 1
     mp$b[l]  <- mp$b[l] + 1
-    fq <- max(sapply(1:L,FUN=q,mp=mp,t=t-1))
+    k <- toString(c(mp,t-1))
+    if(has.key(k,h)){
+      fq <- unname(values(h,keys=k))
+    }else{
+      fq <- max(sapply(1:L,FUN=q,mp=mp,t=t-1))
+      h[k] <- fq
+    }
     
     return( q1 + q1*sq + (1 - q1)*fq )
   }
@@ -37,6 +52,9 @@ q <- function(l,mp,t){
 q.all <- function(mp,t){
   sapply(1:L,FUN=q,mp=mp,t=t)/(t+1)
 }
+
+
+# clear(h)
 
 
 ### Experiments ###
