@@ -115,7 +115,6 @@ adtk.ucb <- function(mab){
 # Bayes adaptive RL
 adtk.barl <- function(mab){
  
-  
   t <- mab$len - mab$round
   betaVal <- 1+ mab$res$n - mab$res$a
   alphaVal <- 1 + mab$res$a
@@ -123,7 +122,12 @@ adtk.barl <- function(mab){
   valfun <- q.all(mp,t)
   # Where arms have equal value, choose randomly
   # This means errors average out when taken repeatedly
-  sample(which(valfun==max(valfun)),size=1)
+  equalBestArms <- which(valfun==max(valfun))
+  if(length(equalBestArms)==1){
+    return(equalBestArms)
+  } else {
+    return(sample(equalBestArms,size=1))
+  }
 }
 
 adtk.mabplot <- function(ts,method="aqr"){

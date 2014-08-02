@@ -65,9 +65,9 @@ title("UCB max clicks - UCB max acqs - UCB both",outer=TRUE)
 # Experiment 2
 ###############
 
-L <- arms <- 3 # TODO - stupid hardcoded L value.
+L <- arms <- 2 # TODO - stupid hardcoded L value.
 initVals <- data.frame(q=rbeta(arms,shape1=1,shape2=1),p=1) # q is anything from unif(0,1)
-campaignLen <- 7
+campaignLen <- 6
 trials <- 10
 
 
@@ -111,10 +111,9 @@ tot <- apply(X=winner,MARGIN=1,FUN=sum)
 ggplot(data=all, aes(x=t,y=value,colour=variable)) + 
   geom_line() +
   geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) +
-  ggtitle(paste("acqs",tot[1],"-",tot[2],"barl"))
+  ggtitle(paste("acqs",tot[1],"-",tot[2],"barl",": true rate",
+                round(initVals$q[1],2),round(initVals$q[2],2)))
 
 
-# barl seems to do well but a lot of noise.
-# Longer trials, more arms need more efficient (cached) rules.
 
 
