@@ -2,161 +2,158 @@
 library(reshape)
 library(ggplot2)
 
-arms <- 3
-initVals <- data.frame(q=rbeta(arms,shape1=5,shape2=95),p=rbeta(arms,shape1=1,shape2=1))
-campaignLen <- 100
-trials <- 10
-
-ts_clicks <- array(0, c(campaignLen, trials))
-ts_acqs <- array(0, c(campaignLen, trials))
-ts_both <- array(0, c(campaignLen, trials))
-
-for(v in 1:trials){  
-  # 1. one only tries to maximise number of clicks, ignoring conversions
-  ts_clicks[,v] <- adtk.mab(DFUN=adtk.ts_clicks,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret
-  # 2. one only tries to maximise number of conversions, ignoring clicks
-  ts_acqs[,v] <- adtk.mab(DFUN=adtk.ts_acqs,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret
-  # 3. one tries to maximise number of conversions, considering clicks as well, assuming however, 
-  #     that the two rates are independent (formulate the model carefully and extract a confidence interval for UCB). 
-  ts_both[,v] <- adtk.mab(DFUN=adtk.ts_both,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret
+compareStrats <- function(arms,initVals,campaignLen,trials,strats,strat_names,prior){
+  
+  results <- array(0,c(length(strats),campaignLen,trials))
+  
+  for(t in 1:trials){  
+    for(s in 1:length(strats)){
+      F <- strats[[s]]
+      results[s,,t] <- adtk.mab(DFUN=F,trueVals=initVals,campaignLen=campaignLen,arms=arms,prior=prior)$metrics$regret
+    }
+  }
+  
+  # Careful of joint winners
+  # winners <- apply(X=results[,100,],MARGIN=2,function(x){ which(x==max(x)) }) 
+  
+  means <- apply(X=results,MARGIN=c(1,2),FUN=mean)
+  rownames(means) <- strat_names
+  sdevs <- apply(X=results,MARGIN=c(1,2),FUN=sd)
+  rownames(sdevs) <- strat_names
+  
+  
+  df <- melt(means,id=c())
+  df$se <- melt(sdevs,id=c())$value
+  return(df)
 }
 
-r <- rbind(t(ts_clicks),t(ts_acqs),t(ts_both))
-df <- as.data.frame(r)
+#############
+# Validation 1 - set p==1
+#############
 
-means <- ddply(df, .(g=rep(as.factor(c("clicks","acqs","both")),each=10)), 
-            function(x){apply(X=x,MARGIN=2,FUN=mean)})
-m <- as.data.frame(t(means[,-1]))
-colnames(m) <- c("clicks","acqs","both")
-m$t <- 1:campaignLen
-
-
-
-sd <- ddply(df, .(g=rep(as.factor(c("clicks","acqs","both")),each=10)), 
-               function(x){apply(X=x,MARGIN=2,FUN=sd)})
-s <- as.data.frame(t(sd[,-1]))
-colnames(s) <- c("clicks","acqs","both")
-s$t <- 1:campaignLen
-
-all <- melt(m,id=c("t"))
-all$se <- melt(s,id=c("t"))$value
-
-
-
-ggplot(data=all, aes(x=t,y=value,colour=variable)) + 
-  geom_line() +
-  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5)
-
-
-
-
-
-###############
-# Experiment 2
-###############
-
-arms <- 3 # TODO - stupid hardcoded L value.
-initVals <- data.frame(q=rbeta(arms,shape1=1,shape2=1),p=1) # q is anything from unif(0,1)
-campaignLen <- 15
-trials <- 10
-
-
-ts_acqs <- array(0, c(campaignLen, trials))
-barl <- array(0, c(campaignLen, trials))
-winner <- array(0, c(2, trials))
-
-for(v in 1:trials){  
-
-  ts_acqs[,v] <- r1 <- adtk.mab(DFUN=adtk.ts_acqs,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret 
-  barl[,v] <- r2 <- adtk.mab(DFUN=adtk.barl,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret
-  winner[1,v] <- 1*(r1[campaignLen] < r2[campaignLen]) # Winner has least regret
-  winner[2,v] <- 1*(r1[campaignLen] > r2[campaignLen])
-  # TODO
-  # Winner isn't really meaningful here, because we simulate 2 different games.
-  # We would need to draw 10 samples from each arm first, then compare.
-}
-
-
-
-r <- rbind(t(ts_acqs),t(barl))
-df <- as.data.frame(r)
-
-means <- ddply(df, .(g=rep(as.factor(c("acqs","barl")),each=trials)), 
-               function(x){apply(X=x,MARGIN=2,FUN=mean)})
-m <- as.data.frame(t(means[,-1]))
-colnames(m) <- c("acqs","barl")
-m$t <- 1:campaignLen
-
-
-
-sd <- ddply(df, .(g=rep(as.factor(c("acqs","barl")),each=trials)), 
-            function(x){apply(X=x,MARGIN=2,FUN=sd)})
-s <- as.data.frame(t(sd[,-1]))
-colnames(s) <- c("acqs","barl")
-s$t <- 1:campaignLen
-
-all <- melt(m,id=c("t"))
-all$se <- melt(s,id=c("t"))$value
-
-
-tot <- apply(X=winner,MARGIN=1,FUN=sum)
-
-ggplot(data=all, aes(x=t,y=value,colour=variable)) + 
-  geom_line() +
-  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) +
-  ggtitle(paste("acqs",tot[1],"-",tot[2],"barl",": true rate",toString(round(initVals$q,2))))
-
-# Look at the literature on this, there are many 
-# approaches (Action elimination, approximations)
-# to deal with the size of the knowledge state space.
-# Difference between bandits and RL? (RL has states?)
-
-###############
-# Experiment 3
-###############
-
+# With pin-point distribution on acquisition rate, all algos are doing the same thing - learning click rate.
 
 arms <- 2
-initVals <- data.frame(q=rbeta(arms,shape1=10,shape2=20),p=rbeta(arms,shape1=1,shape2=1))
-campaignLen <- 15
-trials <- 100
-
-ts_both <- array(0, c(campaignLen, trials))
-barl_both <- array(0, c(campaignLen, trials))
-
-for(v in 1:trials){  
-  ts_both[,v] <- adtk.mab(DFUN=adtk.ts_both,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret
-  barl_both[,v] <- adtk.mab(DFUN=adtk.barl_both,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret
-  # TODO - too noisy. Include the winner by comparing the same game
-}
-
-r <- rbind(t(ts_both),t(barl_both))
-df <- as.data.frame(r)
-
-means <- ddply(df, .(g=rep(as.factor(c("ts","barl")),each=trials)), 
-               function(x){apply(X=x,MARGIN=2,FUN=mean)})
-m <- as.data.frame(t(means[,-1]))
-colnames(m) <- c("ts","barl")
-m$t <- 1:campaignLen
+prior <- data.frame(aq=1000,bq=1,ap=1,bp=1) 
+initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
+campaignLen <- 200
+trials <- 10
+strats <- c(adtk.ts_clicks,adtk.ts_acqs,adtk.ts_both) # Careful, takes the values as the values at time of assignment
+strat_names <- c("ts_clicks","ts_acqs","ts_both")
 
 
+df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
 
-sd <- ddply(df, .(g=rep(as.factor(c("ts","barl")),each=trials)), 
-            function(x){apply(X=x,MARGIN=2,FUN=sd)})
-s <- as.data.frame(t(sd[,-1]))
-colnames(s) <- c("ts","barl")
-s$t <- 1:campaignLen
-
-all <- melt(m,id=c("t"))
-all$se <- melt(s,id=c("t"))$value
-
-
-# tot <- apply(X=winner,MARGIN=1,FUN=sum)
-
-ggplot(data=all, aes(x=t,y=value,colour=variable)) + 
+ggplot(data=df, aes(x=X2,y=value,colour=X1)) + 
   geom_line() +
-  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) 
-# TODO - add winner count
+  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) +
+  ggtitle("Validation \n (p==1)")
+
+
+#############
+# Validation 2 - set q==1
+#############
+
+# Clicks should never learn
+# acqs and both should be equivalent
+
+prior <- data.frame(aq=1,bq=1,ap=1000,bp=1) 
+initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
+
+df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
+
+ggplot(data=df, aes(x=X2,y=value,colour=X1)) + 
+  geom_line() +
+  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) +
+  ggtitle("Validation \n (q==1)")
+
+
+###############
+# Experiment 1 - compare Thompson Sampling of clicks vs acquisitions vs both
+###############
+
+# Remember - clicks will learn the best p fast.
+# When this is not same as best r, it will never converge, 
+# but when it does, it will look really good. 
+# Should test over many values of init parameters.
+
+arms <- 10
+prior <- data.frame(aq=10,bq=15,ap=1,bp=1) 
+initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
+campaignLen <- 300
+trials <- 10
+strats <- c(adtk.ts_clicks,adtk.ts_acqs,adtk.ts_both) # Careful, takes the values as the values at time of assignment
+strat_names <- c("ts_clicks","ts_acqs","ts_both")
+
+
+df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
+
+ggplot(data=df, aes(x=X2,y=value,colour=X1)) + 
+  geom_line() +
+  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) +
+  ggtitle( paste("Thompson Sampling \n clicks vs acquisitions vs both \n r:",
+                 toString(round(initVals$q*initVals$p,2)),
+                 "\n p:",toString(round(initVals$p,2)),
+                 "\n q:",toString(round(initVals$q,2))
+                 ))
+
+
+
+
+###############
+# Experiment 2 - Thompson Sampling vs Bayes Adaptive (acquisitions only)
+###############
+
+arms <- 2 # Stick to 2 arms for these short campaigns
+prior <- data.frame(aq=1,bq=1,ap=1000,bp=1) 
+initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=1) 
+campaignLen <- 10
+trials <- 10
+strats <- c(adtk.ts_acqs,adtk.barl)
+strat_names <- c("ts_acqs","ba_acqs")
+
+
+df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
+
+ggplot(data=df, aes(x=X2,y=value,colour=X1)) + 
+  geom_line() +
+  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) +
+  ggtitle( paste("Thompson Sampling vs Bayes Adaptive \n (acquisitions only) \n r:",
+               toString(round(initVals$q*initVals$p,2)),
+               "\n p:",toString(round(initVals$p,2)),
+               "\n q:",toString(round(initVals$q,2))
+                ))
+
+
+
+###############
+# Experiment 3 - Thompson Sampling vs Bayes Adaptive (both)
+###############
+
+# REMEMBER - clicks will learn the best p fast.
+# When this is not same as best r, it will never converge, 
+# but when it does, it will look really good. 
+# Should test over many values of init parameters.
+
+
+arms <- 2 # Stick to 2 arms for these short campaigns
+prior <- data.frame(aq=3,bq=6,ap=1,bp=1) 
+initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
+campaignLen <- 10
+trials <- 100
+strats <- c(adtk.ts_acqs,adtk.ts_both,adtk.barl,adtk.barl_both)
+strat_names <- c("ts_acqs","ts_both","ba_acqs","ba_both")
+
+df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
+
+ggplot(data=df, aes(x=X2,y=value,colour=X1)) + 
+  geom_line() +
+  geom_errorbar(aes(ymin=value-se, ymax=value+se), width=.1, alpha=.5) +
+  ggtitle( paste("Thompson Sampling vs Bayes Adaptive \n (both) \n r:",
+               toString(round(initVals$q*initVals$p,2)),
+               "\n p:",toString(round(initVals$p,2)),
+               "\n q:",toString(round(initVals$q,2))
+               ))
 
 
 

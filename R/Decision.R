@@ -2,7 +2,7 @@ library(plyr)
 library(hash)
 
 
-adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,trueVals=c()) {
+adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,trueVals,prior) {
   
   qp <- trueVals$q*trueVals$p
   oracle <- max(qp)
@@ -16,7 +16,7 @@ adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,true
   
   for(round in 1:campaignLen){
     
-    mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=round,len=campaignLen)
+    mab <- list(arms=arms,armChoices=armChoices,res=res,trueVals=trueVals,round=round,len=campaignLen,prior=prior)
     arm <- DFUN(mab)
     armChoices[round] <- arm
     
@@ -50,11 +50,11 @@ adtk.m4 <- function(vals){
 
 
 # Achieve this through sampling rather than integral
-adtk.ts <- function(arms,k,n){
+adtk.ts <- function(arms,k,n,s1,s2){
   
   # Sample from posterior
   samples <- 100
-  s <- matrix(rbeta(arms*samples,shape1=(1 + k),shape2=(1 + n - k)),nrow=arms)
+  s <- matrix(rbeta(arms*samples,shape1=(s1 + k),shape2=(s2 + n - k)),nrow=arms)
   best <- apply(X=s,MARGIN=2,FUN=function(x){which(x==max(x))})
   df <- rbind(data.frame(g=best,c=1),data.frame(g=1:arms,c=0))
   probs <- ddply(df,~g,summarise,freq=sum(c))$freq/samples
@@ -62,9 +62,9 @@ adtk.ts <- function(arms,k,n){
   sample(1:arms,size=1,prob=probs)
 }
 
-adtk.ts_acqs <- function(mab){ adtk.ts(mab$arms,mab$res$a,mab$res$n) }
-adtk.ts_clicks <- function(mab){ adtk.ts(mab$arms,mab$res$c,mab$res$n) }
+adtk.ts_acqs <- function(mab){ adtk.ts(mab$arms,mab$res$a,mab$res$n,1,1) } # TODO - how to get priors for this?
 
+adtk.ts_clicks <- function(mab){ adtk.ts(mab$arms,mab$res$c,mab$res$n,mab$prior$ap,mab$prior$bp) }
 
 adtk.ts_both <- function(mab){ # TODO - much duplicate code 
   
@@ -75,10 +75,8 @@ adtk.ts_both <- function(mab){ # TODO - much duplicate code
   
   # For each arm:
   samples <- 100
-  p <- rbeta(arms*samples,shape1=(c+1),shape2=(n-c+1)) # Flat prior on clicks
-  s1 <- 5   # Strong prior on q TODO - parameterize this
-  s2 <- 95 # Strong prior on q TODO - parameterize this
-  q <- rbeta(arms*samples,shape1=a+s1,shape2=(c-a+s2))
+  p <- rbeta(arms*samples,shape1=(c+mab$prior$ap),shape2=(n-c+mab$prior$bp))
+  q <- rbeta(arms*samples,shape1=a+mab$prior$aq,shape2=(c-a+mab$prior$bq))
   pq <- p*q
   s <- matrix(pq,nrow=arms)
   # return vectors of probs where pq is higher of all arms.
@@ -112,10 +110,10 @@ adtk.ucb <- function(mab){
 adtk.barl <- function(mab){
  
   t <- mab$len - mab$round
-  betaVal <- 1+ mab$res$n - mab$res$a
-  alphaVal <- 1 + mab$res$a
+  betaVal <- mab$prior$bq + mab$res$n - mab$res$a
+  alphaVal <- mab$prior$aq + mab$res$a
   mp <- data.frame(a=alphaVal,b=betaVal)
-  valfun <- q.all(mp,t)
+  valfun <- barl.q.all(mp,t)
   # Where arms have equal value, choose randomly
   # This means errors average out when taken repeatedly
   equalBestArms <- which(valfun==max(valfun))
@@ -130,10 +128,10 @@ adtk.barl <- function(mab){
 adtk.barl_both <- function(mab){
   
   t <- mab$len - mab$round
-  betap <- 1 + mab$res$n - mab$res$c
-  alphap <- 1 + mab$res$c
-  betaq <- 20 + mab$res$c - mab$res$a
-  alphaq <- 10 + mab$res$a
+  betap <- mab$prior$bp + mab$res$n - mab$res$c
+  alphap <- mab$prior$ap + mab$res$c
+  betaq <- mab$prior$bq + mab$res$c - mab$res$a
+  alphaq <- mab$prior$aq + mab$res$a
   mp <- data.frame(aq=alphaq,bq=betaq,ap=alphap,bp=betap)
   valfun <- barl_both.q.all(mp,t)
   # Where arms have equal value, choose randomly
@@ -146,7 +144,11 @@ adtk.barl_both <- function(mab){
   }
 }
 
+adtk.PLOT_OFF <- TRUE
+
 adtk.mabplot <- function(ts,method="aqr"){
+  
+  if(adtk.PLOT_OFF){return()}
   
   if(method=="aqr"){
     
@@ -226,6 +228,7 @@ barl.q <- function(l,mp,t){
 }
 
 barl.q.all <- function(mp,t){
+  L <- dim(mp)[1]
   sapply(1:L,FUN=barl.q ,mp=mp,t=t)/(t+1)
 }
 
@@ -247,7 +250,7 @@ barl_both.q <- function(l,mp,t){
     return( q1 ) # Immediate value of lever l
     
   }else{
-    # TODO - this code is dreadful
+    # TODO - tidy up and standardize with barl.q
     
     # Quality no clicks
     mp$bp[l]  <- mp$bp[l] + 1
@@ -289,6 +292,7 @@ barl_both.q <- function(l,mp,t){
 }
 
 barl_both.q.all <- function(mp,t){
+  L <- dim(mp)[1]
   sapply(1:L,FUN=barl_both.q,mp=mp,t=t)/(t+1)
 }
 
