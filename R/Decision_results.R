@@ -11,7 +11,6 @@ ts_clicks <- array(0, c(campaignLen, trials))
 ts_acqs <- array(0, c(campaignLen, trials))
 ts_both <- array(0, c(campaignLen, trials))
 
-# TODO - parrallelize
 for(v in 1:trials){  
   # 1. one only tries to maximise number of clicks, ignoring conversions
   ts_clicks[,v] <- adtk.mab(DFUN=adtk.ts_clicks,trueVals=initVals,campaignLen=campaignLen,arms=arms)$metrics$regret
@@ -56,7 +55,7 @@ ggplot(data=all, aes(x=t,y=value,colour=variable)) +
 # Experiment 2
 ###############
 
-L <- arms <- 3 # TODO - stupid hardcoded L value.
+arms <- 3 # TODO - stupid hardcoded L value.
 initVals <- data.frame(q=rbeta(arms,shape1=1,shape2=1),p=1) # q is anything from unif(0,1)
 campaignLen <- 15
 trials <- 10
@@ -161,4 +160,49 @@ ggplot(data=all, aes(x=t,y=value,colour=variable)) +
 
 
 
+##########################################
+### Illustration of Bayes optimal rule ###
+##########################################
+
+barl.illustration <- function(){
+
+  # Experimentally, the performance of an arm does not
+  # impact the relative value of other arms.
+  # If the best arm is very good, it has the effect of 
+  # 'stretching out' t as it requires several rounds of failure
+  # before other arms are played.
+  # It does not seem to change the 'best arm' which is the only
+  # choice that matters.
+  # Is this same as Gittins index? Can we reduce the computation?
+  
+  par(mfrow=c(2,3))
+  maxt <- 8
+  results <- c(1,0,0,0,0,0,0,0,0,0,0,0)
+  mp <- data.frame(a=c(1,4,7),b=c(1,3,5))
+  
+  getVals <- function (mp,maxt) {
+    vals <- matrix(data=rep(0,maxt*3),nrow=maxt)
+    for(r in 0:(maxt-1)){
+      qvals <- barl.q.all(mp,t=r)
+      vals[r+1,] <- qvals / sum(qvals) # sum(qvals)
+    }
+    vals
+  }
+  
+  for(t in 1:6){
+    
+    vals <- getVals(mp,maxt=(maxt-t+1))
+    plot(x=t:maxt,vals[,1],type='l',ylim=c(min(vals),max(vals)),xlim=c(1,maxt),
+         main=paste("Index value of each arm \n",toString(mp)))
+    lines(x=t:maxt,vals[,2],col="red")
+    lines(x=t:maxt,vals[,3],col="blue")
+    abline(v=t)
+    
+    end <- vals[maxt-t+1,]
+    lever <- which(end==max(end))[1]
+    s <- results[t]
+    mp[lever,] <- mp[lever,] + c(s,1-s)
+  }
+  
+}
 

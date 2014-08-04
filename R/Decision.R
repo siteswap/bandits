@@ -1,4 +1,5 @@
 library(plyr)
+library(hash)
 
 
 adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,trueVals=c()) {
@@ -173,4 +174,121 @@ adtk.mabplot <- function(ts,method="aqr"){
   }
 }
 
+
+#########################
+### Bayes Adaptive RL ###
+#########################
+
+
+# Init hash
+barl.h <- hash()
+# clear(barl.h)
+# mp <- data.frame(a=rep(1,L),b=rep(1,L))
+
+# Quality of lever l, with t trials ahead.
+barl.q <- function(l,mp,t){
+  
+  h <- barl.h # create shorter reference
+  L <- dim(mp)[1]
+  # 1 step quality
+  q1 <- mp[l,"a"]/(mp[l,"a"]+mp[l,"b"]) 
+  
+  if(t==0){
+    
+    return( q1 ) # Immediate value of lever l
+    
+  }else{
+    
+    # Quality under success
+    mp$a[l]  <- mp$a[l] + 1
+    # sq <- max(q(1,mp,t-1),q(2,mp,t-1))
+    k <- toString(c(mp,t-1))
+    if(has.key(k,h)){
+      sq <- unname(values(h,keys=k))
+    }else{
+      sq <- max(sapply(1:L,FUN=barl.q ,mp=mp,t=t-1))
+      h[k] <- sq
+    }
+    
+    # Quality under failure
+    mp$a[l]  <- mp$a[l] - 1
+    mp$b[l]  <- mp$b[l] + 1
+    k <- toString(c(mp,t-1))
+    if(has.key(k,h)){
+      fq <- unname(values(h,keys=k))
+    }else{
+      fq <- max(sapply(1:L,FUN=barl.q ,mp=mp,t=t-1))
+      h[k] <- fq
+    }
+    
+    return( q1 + q1*sq + (1 - q1)*fq )
+  }
+}
+
+barl.q.all <- function(mp,t){
+  sapply(1:L,FUN=barl.q ,mp=mp,t=t)/(t+1)
+}
+
+
+# Init hash
+barl_both.h <- hash()
+# mp <- data.frame(aq=rep(5,L),bq=rep(95,L),ap=rep(1,L),bp=rep(1,L))
+
+# Quality of lever l, with t trials ahead.
+barl_both.q <- function(l,mp,t){
+  
+  h <- barl_both.h # create shorter reference
+  L <- dim(mp)[1]
+  # 1 step quality
+  q1 <- mp[l,"aq"]/(mp[l,"bq"]+mp[l,"aq"]) * mp[l,"ap"]/(mp[l,"bp"]+mp[l,"ap"]) 
+  
+  if(t==0){
+    
+    return( q1 ) # Immediate value of lever l
+    
+  }else{
+    # TODO - this code is dreadful
+    
+    # Quality no clicks
+    mp$bp[l]  <- mp$bp[l] + 1
+    k <- toString(c(mp,t-1))
+    if(has.key(k,h)){
+      sq <- unname(values(h,keys=k))
+    }else{
+      sq <- max(sapply(1:L,FUN=barl_both.q,mp=mp,t=t-1))
+      h[k] <- sq
+    }
+    
+    # Quality click, no acq
+    mp$bp[l]  <- mp$bp[l] - 1
+    mp$ap[l]  <- mp$ap[l] + 1
+    mp$bq[l]  <- mp$bq[l] + 1
+    k <- toString(c(mp,t-1))
+    if(has.key(k,h)){
+      fq <- unname(values(h,keys=k))
+    }else{
+      fq <- max(sapply(1:L,FUN=barl_both.q,mp=mp,t=t-1))
+      h[k] <- fq
+    }
+    # prob of a click
+    pc <- mp[l,"ap"]/(mp[l,"bp"]+mp[l,"ap"])
+    
+    # Quality acq
+    mp$bq[l]  <- mp$bq[l] - 1
+    mp$aq[l]  <- mp$aq[l] + 1
+    k <- toString(c(mp,t-1))
+    if(has.key(k,h)){
+      aq <- unname(values(h,keys=k))
+    }else{
+      aq <- max(sapply(1:L,FUN=barl_both.q,mp=mp,t=t-1))
+      h[k] <- aq
+    }
+    
+    return( q1 + q1*aq + pc*fq + (1 - q1 - pc)*sq )
+  }
+}
+
+barl_both.q.all <- function(mp,t){
+  sapply(1:L,FUN=barl_both.q,mp=mp,t=t)/(t+1)
+}
 
