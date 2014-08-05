@@ -39,13 +39,6 @@ adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,true
   return(mab)
 }
 
-# Documented model 4.
-adtk.m4 <- function(vals){
-  c <- rbinom(1,1,vals$p)
-  a <- rbinom(1,c,vals$q)
-  c(a,c,1)
-}
-
 # Thompson - choose according to how frequently arm is maximum.
 
 
@@ -62,7 +55,25 @@ adtk.ts <- function(arms,k,n,s1,s2){
   sample(1:arms,size=1,prob=probs)
 }
 
-adtk.ts_acqs <- function(mab){ adtk.ts(mab$arms,mab$res$a,mab$res$n,1,1) } # TODO - how to get priors for this?
+
+adtk.ts_acqs <- function(mab){ 
+  
+  # Use method of moments to get estimate parameters
+  # for equivalent beta distribution.
+  pr <- mab$prior
+  means <- c(pr$ap/(pr$ap + pr$bp), pr$aq/(pr$aq + pr$bq))
+  moment2 <- c(beta(pr$ap + 2, pr$bp)/beta(pr$ap, pr$bp),
+                beta(pr$aq + 2, pr$bq)/beta(pr$aq, pr$bq) )
+  sig <- prod(moment2) - prod(means^2)
+  mu <- prod(means)
+  
+  if(sig > mu*(1-mu) ){ warning("Method of moments estimation not valid") }
+
+  alpha <- mu*(mu*(1-mu)/sig - 1)
+  beta <- (1-mu)*(mu*(1-mu)/sig - 1)
+  
+  adtk.ts(mab$arms,mab$res$a,mab$res$n,alpha,beta) 
+  } 
 
 adtk.ts_clicks <- function(mab){ adtk.ts(mab$arms,mab$res$c,mab$res$n,mab$prior$ap,mab$prior$bp) }
 
@@ -75,6 +86,7 @@ adtk.ts_both <- function(mab){ # TODO - much duplicate code
   
   # For each arm:
   samples <- 100
+  arms <- mab$arms
   p <- rbeta(arms*samples,shape1=(c+mab$prior$ap),shape2=(n-c+mab$prior$bp))
   q <- rbeta(arms*samples,shape1=a+mab$prior$aq,shape2=(c-a+mab$prior$bq))
   pq <- p*q
