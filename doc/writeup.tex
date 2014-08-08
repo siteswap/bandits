@@ -257,6 +257,78 @@ TODO - vgam library has problems fitting non betabinom cluster data.
 
 \subsection{Performance tests}
 
+
+\subsection{Regret}
+
+We define regret as TODO  use standard notation.
+
+\subsection{Test harness}
+
+\begin{enumerate}
+	\item  User sets prior distribution defined by alpha and beta values for p and q.
+	\item  A set of p and q values are sampled from this prior once.
+	\item   Each strategy is provided with the prior alpha beta values and must infer the true values of p and q. The test harness 
+calls on the strategy to return an arm number. The test harness then draws a single sample from a distribution using the 
+true p and q values for this arm. The sample is a tuple $(acquisition,click,views)$. The strategy is given the result of this 
+sample so that it may update it's knowledge. The mean regret for the strategy is also updated.
+	\item   Step 3 is iterated for 300 rounds i.e. MAB has a finite horizon of 300.
+	\item   Steps 3 and 4 are repeated 10 times so that we can calculate mean regret and standard deviation for each round.
+\end{enumerate}
+
+
+\subsection{Strategies}
+
+\begin{description}
+	\item[ts clicks]  Each arm is initialized with a beta prior using the alpha and beta values for p. Arms are chosen using Thompson 
+sampling based on the probability of each arm having maximum p. The algorithm seeks to optimize clicks only, though regret 
+is still calculated in same way.
+	\item[ts both]  Each arm is initialized with beta prior for both p and q. Arms are chosen using Thompson sampling based on the 
+probability of each arm having maximum pq. Since the distribution of pq does not in general have an analytic form, we use 
+sampling. The priors on p and q are updated in the usual way.
+	\item[ts acqs]  The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not 
+directly translate in to a Beta prior on pq, we estimate a Beta prior for pq using the mean and variance of p and q. This 
+new Beta prior is updated in the usual way with acquisitions and views.
+\end{description}
+
+\subsection{Validation}
+
+We run a set of validation checks to make sure we are not favouring one strategy in some extrinsic way - such as a more 
+informative prior or more accurate posterior sampling.
+
+\begin{enumerate}
+	\item  We give p a point prior at value 1. With this, we expect to see the same performance from ts acqs and ts both. ts clicks 
+should select arms arbitrarily.
+	\item  We give q a point prior at value 1. With this, we expect to see the same performance from all 3 strategies as they are 
+all 'learning' click rate.
+	\item  We give both p and q flat priors. We expect to see the same performance from ts acqs and ts both as our analysis shows 
+this is a special case, equivalent to modelling acquisitions only.
+\end{enumerate}
+
+\subsection{Descriptive results}
+
+\begin{description}
+	\item[ts clicks]  typically reduces regret very quickly particularly with few arms and high variance on p. But over longer 
+periods loses out to ts acqs and ts both since the best arm does not always have the highest rate of clicks. If there is a 
+high variance on q, it can go very wrong.
+	\item[ts both]  performs well for long trials or where q can take on high values. But typically learns slowly, particularly when 
+q has small values.
+	\item[ts acqs]   robust to the pathological cases that see poor performance from ts clicks and ts acqs, and in certain cases 
+produced significantly improved results on both.
+\end{description}
+
+\subsection{Issues with testing}
+
+We found that the results have a very high variance when we provided a new sample on each loop. So we stuck to picking a 
+single set of true values. Unfortunately, this is not what is of interest. We want to know, given some prior values, how 
+will each strategy perform (on average). 
+
+We can look at mean regret, but will find this result is dominated by examples where regret is very high. So we also look at - frequency in 1st, 2nd, 3rd.
+
+We also deal with the problem of high variance, by looking not at the variance of results, but standard error of the mean. 
+This is more meaningful as it tells us whether we can have faith in our mean calculation. This can be achieved through 
+bootstrapping - needs to be with replacement.
+
+
 \section{Conclusions}
 
 \begin{itemize}

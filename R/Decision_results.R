@@ -1,12 +1,20 @@
 
 library(reshape)
 library(ggplot2)
+library(gridExtra)
 
 compareStrats <- function(arms,initVals,campaignLen,trials,strats,strat_names,prior){
   
+  RESAMPLE_OUTER <- TRUE
   results <- array(0,c(length(strats),campaignLen,trials))
   
   for(t in 1:trials){  
+    
+    if(RESAMPLE_OUTER){ # Resample
+      initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),
+                             p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
+    }
+    
     for(s in 1:length(strats)){
       F <- strats[[s]]
       results[s,,t] <- adtk.mab(DFUN=F,trueVals=initVals,campaignLen=campaignLen,arms=arms,prior=prior)$metrics$regret
@@ -20,16 +28,37 @@ compareStrats <- function(arms,initVals,campaignLen,trials,strats,strat_names,pr
   rownames(means) <- strat_names
   sdevs <- apply(X=results,MARGIN=c(1,2),FUN=sd)
   rownames(sdevs) <- strat_names
+  meanSE <- boostrap.se(results,campaignLen,trials,strats)
+  rownames(meanSE) <- strat_names
   
   
   df <- melt(means,id=c())
   df$se <- melt(sdevs,id=c())$value
+  
+  if(RESAMPLE_OUTER){ 
+    df$se <- melt(meanSE,id=c())$value
+  }
   colnames(df) <- c("strategy","round","regret","se")
   return(df)
 }
 
+# Calc standard error of mean
+boostrap.se <- function(r,campaignLen,trials,strats){
+  
+  means <- array(0,c(length(strats),campaignLen,200))
+  # size <- floor(trials/3) # TODO - ideal size for resample?
+  
+  for(i in 1:200){ # TODO - create config object to pass around.
+    resample <- r[,, sample(1:trials,size=trials,replace=T) ]
+    means[,,i] <- apply(X=resample,MARGIN=c(1,2),FUN=mean)
+  }
+  
+  apply(X=means,MARGIN=c(1,2),FUN=sd)
+}
+
+
 #############
-# Validation 1 - set p==1
+# Validation 1 - set q==1
 #############
 
 # With pin-point distribution on acquisition rate, all algos are doing the same thing - learning click rate.
@@ -38,7 +67,7 @@ arms <- 2
 prior <- data.frame(aq=1000,bq=1,ap=1,bp=1) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
 campaignLen <- 200
-trials <- 10
+trials <- 100
 strats <- c(adtk.ts_clicks,adtk.ts_acqs,adtk.ts_both) # Careful, takes the values as the values at time of assignment
 strat_names <- c("ts_clicks","ts_acqs","ts_both")
 
@@ -52,7 +81,7 @@ ggplot(data=df, aes(x=round,y=regret,colour=strategy)) +
 
 
 #############
-# Validation 2 - set q==1
+# Validation 2 - set p==1
 #############
 
 # Clicks should never learn
@@ -78,25 +107,27 @@ ggplot(data=df, aes(x=round,y=regret,colour=strategy)) +
 # but when it does, it will look really good. 
 # Should test over many values of init parameters.
 
-arms <- 30
-prior <- data.frame(aq=2,bq=10,ap=1,bp=1) 
+arms <- 10
+prior <- data.frame(aq=5,bq=20,ap=5,bp=5) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
-campaignLen <- 300
-trials <- 10
+campaignLen <- 500
+trials <- 100
 strats <- c(adtk.ts_clicks,adtk.ts_acqs,adtk.ts_both) # Careful, takes the values as the values at time of assignment
 strat_names <- c("ts_clicks","ts_acqs","ts_both")
 
 
 df1 <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
+# df1_r <- df1[df1$round %in% seq(1,campaignLen,by=25),]
 
 p1 <- ggplot(data=df1, aes(x=round,y=regret,colour=strategy)) + 
   geom_line() +
-  geom_errorbar(aes(ymin=regret-se, ymax=regret+se), width=.1, alpha=.5) +
+  geom_errorbar(aes(ymin=regret-se, ymax=regret+se), width=.2, alpha=.5) +
   ggtitle( paste(
                  "\n Arms: ",toString(arms),
                  "\n prior(q):",toString(prior[,c(1,2)]),
                  "\n prior(p):",toString(prior[,c(3,4)])
                   ))
+p1
 
 prior <- data.frame(aq=1,bq=1,ap=1,bp=1) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
@@ -124,7 +155,6 @@ p3 <- ggplot(data=df3, aes(x=round,y=regret,colour=strategy)) +
                  "\n prior(p):",toString(prior[,c(3,4)])
   ))
 
-arms <- 30
 prior <- data.frame(aq=1,bq=3,ap=4,bp=6) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
 df4 <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
