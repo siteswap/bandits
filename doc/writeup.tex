@@ -199,19 +199,6 @@ We define 4 loss functions:
 	\item Volume weighted difference in realized CVR (relates closely to budget wasted). 
 	\item Vol weighted MSE.
 \end{enumerate}
-
-\section{ Decision rules }
-
-\section{ Performance testing - online }
-
-We now turn this in to the online problem. In contrast to the existing MAB literature, which tends to focus on asymptotic results, we are interested in the performance over finite trials.
-
-We first look at the changes in the realized and expected loss functions, given varying sizes of initial trials. With this, we can estimate the value of exploration. It would be great if we could do this analytically, but I suspect this would be very tricky. 
-
-We will compare this with some theory from Bayesian medical trial design. Given this investigative work, we will provide a framework for generating optimal decisions in the MAB problem. These may be rules specific to the loss function and model, or it may be a framework to generate them computiationally.
-
-We will compare the performance of our decision rules versus common MAB algorithms and online learning algorithms.
-
 \section{Results}
 
 \subsection{Correlation measures}
@@ -255,30 +242,39 @@ TODO - vgam library has problems fitting non betabinom cluster data.
 \end{tabular}
 \end{table}
 
-\subsection{Performance tests - Model}
+\section{Conclusions}
 
+\begin{itemize}
+	\item Need to use log values of p.
+	\item Clustering based on $a_i$ creates false correlations.
+	\item Clustering based on c does not create false correlations.
+	\item Using c greater than 0, correlations do not show up. But become stronger for c gt 1, c gt 2. This is because it reduces the noise of all the small-n zero and one values.
+	\item Filter based on realized CTR is no use as it does not help with (3). Needs a correlation measure which properly accounts for likelihood weight of response - closest thing is glm.
+	\item Binomial GLM does the best job of (4), though does not consider error in dependent variable.
+\end{itemize}
 
-\subsection{Regret}
+\pagebreak
 
-We define regret as TODO  use standard notation.
+\section{ Simulation testing - Model 4}
 
 \subsection{Test harness}
 
+A simulation test harness was set up to simulate MAB trials. Custom policies were run in the harness and assessed against a regret function. We define regret as the difference in r between chosen arm and optimal arm (TODO add notation).
+
 \begin{enumerate}
-	\item User sets prior distribution defined by alpha and beta values for p and q.
-	\item We use this prior as a generative model to sample a set of p and q values.
-	\item Each strategy is provided with the prior alpha beta values and must infer the true values of p and q. The test harness calls on the strategy to return an arm number. The test harness then draws a single sample from a distribution using the true p and q values for this arm. The sample is a tuple $(acquisition,click,views)$. The strategy is given the result of this sample so that it may update it's knowledge. The mean regret for the strategy is also updated.
-	\item Step 3 is iterated a set number of rounds i.e. the time horizon for the MAB.
-	\item Steps 2, 3 and 4 are repeated 100 times so that we can calculate mean regret.
-	\item A standard error for the mean values is calculated using a bootstrap method.
+	\item Experimenter defines a bivariate Beta prior distribution parameterized by alpha and beta values for p and q.
+	\item This prior is then used as a generative model to sample a set of 'true' p and q values for each arm.
+	\item Each strategy is provided with the prior information and must infer the true values of p and q. The test harness calls on the strategy to return an arm number. The test harness then draws a single sample from a distribution using the true p and q values for this arm. The result is a tuple $(acquisition,click,view)$. The strategy is given this result so that it may update it's knowledge. The mean regret for the strategy is also updated.
+	\item Step 3 is repeated for a set number of rounds i.e. the time horizon.
+	\item Steps 2, 3 and 4 are looped 100 times so that we can calculate mean regret. Standard error for the mean values is estimated using a bootstrap method.
 \end{enumerate}
 
 \subsection{Strategies}
 
 \begin{description}
-	\item[ts clicks]  Each arm is initialized with a beta prior using the alpha and beta values for p. Arms are chosen using Thompson sampling based on the probability of each arm having maximum p. The algorithm seeks to optimize clicks only, though regret is still calculated in same way.
-	\item[ts both]  Each arm is initialized with beta prior for both p and q. Arms are chosen using Thompson sampling based on the probability of each arm having maximum pq. Since the distribution of pq does not in general have an analytic form, we use sampling. The priors on p and q are updated in the usual way.
-	\item[ts acqs]  The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not directly translate in to a Beta prior on pq, we estimate a Beta prior for pq using the mean and variance of p and q. This new Beta prior is updated in the usual way with acquisitions and views.
+	\item[ts clicks] Each arm is initialized with a beta prior using the alpha and beta values for p. Arms are chosen using Thompson sampling based on the probability of each arm having maximum p. The algorithm seeks to optimize clicks only, though regret is still calculated in same way.
+	\item[ts both] Each arm is initialized with beta prior for both p and q. Arms are chosen using Thompson sampling based on the probability of each arm having maximum r value (i.e. pq). Since the distribution of pq does not in general have an analytic form, we use sampling. The priors on p and q are updated in the usual way.
+	\item[ts acqs] The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not directly translate in to a Beta prior on r, we estimate the parameters of a Beta prior for r using the mean and variance of p and q. This new Beta prior is updated in the usual way with acquisitions and views.
 \end{description}
 
 \subsection{Validation}
@@ -291,92 +287,74 @@ We run a set of validation checks to make sure we are not favouring one strategy
 	\item  We give both p and q flat priors. We expect to see the same performance from ts acqs and ts both as our analysis shows this is a special case, equivalent to modelling acquisitions only.
 \end{enumerate}
 
-\subsection{Descriptive results}
+\subsection{Results}
 
-\includegraphics{P1to6.pdf}
+\includegraphics[scale=0.7]{P1to6.pdf}
+
+\subsection{Discussion}
 
 \begin{description}
-	\item[ts clicks]  typically reduces regret very quickly particularly with few arms and high variance on p. But over longer periods loses out to ts acqs and ts both since the best arm does not always have the highest rate of clicks. If there is a high variance on q, it can go very wrong.
-	\item[ts both]  performs well for long trials or where q can take on high values. But typically learns slowly, particularly when q has small values.
-	\item[ts acqs]   robust to the pathological cases that see poor performance from ts clicks and ts acqs, and in certain cases produced significantly improved results on both.
+	\item[ts clicks] typically reduces regret very quickly particularly with few arms and high variance on p. But over longer periods loses out to ts acqs and ts both since the best arm does not always have the highest rate of clicks. If there is a high variance on q, it can go very wrong.
+	\item[ts acqs] performs well for long trials or where q can take on high values. But typically learns slowly, particularly when q has small values.
+	\item[ts both] robust to the pathological cases that see poor performance from ts clicks and ts acqs, and in certain cases produced significantly improved results on both. In all but one instance (discussed next), ts both is at least as good as either algorithm.
+
 \end{description}
 
-We also note
-\begin{enumerate}
-	\item Ts clicks initially beats ts both, though this advantage goes away once the number of arms is increased. We hypothesise this is a feature of Thompson sampling rather than the model - by ignoring some of the uncertainty ts clicks gains an early exploitation benefit.
-	\item As the number of arms goes up, the regret increases. Possibly harder to find 'best arm' given more arms, but possibly a sign of over-exploration.
-\end{enumerate}
+We also note that ts clicks initially beats ts both, though this advantage goes away once the number of arms is increased. We hypothesise this is a feature of Thompson sampling rather than the model - by ignoring some of the uncertainty in the true value of r, ts clicks gains an early exploitation advantage.
 
-We consider these are issues concerning the decision algorithm (Thompson sampling in this case) and address this issues in the next section.
+We also note that as the number of arms goes up, the regret increases. This could be because the 'best arm' becomes further from the average arm given more arms, but possibly a sign of over-exploration.
+
+We consider these are issues concerning the decision algorithm (Thompson sampling) in the next section.
+
+\pagebreak
+
+\section{Simulation testing - Bayes Adaptive policy}
+
+In the previous section, we demonstrated that a more sophisticated model offered stronger inference and could reduce MAB regret. But we also noted a couple of instances where performance was not as good as it might be. 
+
+With this in mind, we now look at options for decision algorithms. In particular we ask the question - given varying number of arms and campaign length, what is the best policy? 
+
+PAC learning approaches look to limit the number of sub-optimal decisions (TODO add references). But this pure exploration approach does not naturally map to our goal of maximizing value from our campaign budget.
+
+For given priors, it is possible to define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown payoffs. We can turn this in to a many state MDP with known payoff functions. Each state represents one possible value of the posterior. Each transition probability is given it's expected value based on the current posterior. This is called the Bayes Adaptive MDP. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation from optimal control theory.
+
+TODO - Reference Bayes Adaptive Reinforcement learning,
+Optimal Adaptive Policies for Markov Decision Processes.
+
+\subsection{Strategies}
+
+TODO - add recursive definition for optimal arm aswell as how expectation is calculated from prior.
+
+\begin{description}
+	\item[ba both] Each arm is initialized with beta prior for both p and q. Arm with maximum Q value is always chosen, where multiple arms have same Q value, one is selected at random.
+	\item[ba acqs] The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not directly translate in to a Beta prior on r, we estimate the parameters of a Beta prior for r using the mean and variance of p and q. This new Beta prior is updated in the usual way with acquisitions and views. The arm selected is the one with maximum Q value.
+\end{description}
 
 
-\subsection{Issues with testing}
+\subsection{Bayes Adaptive policy illustration}
 
-We found that the results have a very high variance when we provided a new sample on each loop. So we stuck to picking a 
-single set of true values. Unfortunately, this is not what is of interest. We want to know, given some prior values, how 
-will each strategy perform (on average). 
+The graphs below provide a demonstration of this policy. In each graph, we see which arm choice is optimal as a function of rounds remaining. Note the high expectation arm is preferred for short campaigns the moves toward the higher variance arms as the time horizon increases. The 6 panes show one possible scenario play out as arms are chosen and posteriors are updated.
 
-We can look at mean regret, but will find this result is dominated by examples where regret is very high. So we also look at - frequency in 1st, 2nd, 3rd.
+\includegraphics[scale=0.7]{BARLillustration.pdf}
 
-We also deal with the problem of high variance, by looking not at the variance of results, but standard error of the mean. 
-This is more meaningful as it tells us whether we can have faith in our mean calculation. This can be achieved through 
-bootstrapping - needs to be with replacement.
-
-\section{Performance testing - Decision policy}
-
-In the previous section, we demonstrated that a more sophisticated model offered stronger inference and could reduce MAB regret. But we also noted a couple of instances where performance was not as good as it could be. 
-
-With this in mind, we now look at options for decision algorithms. In particular we ask the question - given varying number of arms and campaign length, what is the best policy?
-
-For given priors, we can define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown payoffs. We can turn this in to a many state MDP with known payoff functions. Each state represents one possible value of the posterior. Each transition probability is given it's expected value based on the current posterior. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation from optimal control theory.
-
-TODO - Reference Bayes Adaptive Reinforcement learning
-
-This solution has a number of particularly attractive characteristics over Thompson sampling and UCB:
+This solution has a number of particularly attractive characteristics over common heuristics such as Thompson sampling and UCB:
 \begin{itemize}
-	\item We see that for small numbers of rounds, the algorithm purely exploits the high expectation arms, since there are too few rounds for the high variance arms to produce enough positive results to change our later decisions. This is very relevant for our domain where we may have millions of arms (sites x placements x creatives x userType) but only a few 100,000 rounds and expectation of only a few 100 acquisitions. This addresses the issues we saw in previous section. TS and UCB would over explore in these scenarios.
+	\item We see that for small numbers of rounds, the algorithm purely exploits the high expectation arms, since there are too few rounds for the high variance arms to produce enough positive results to change our decisions. This is very relevant for our domain where we may have millions of arms (sites x placements x creatives x userType) but only a few 100,000 rounds and expectation of only a few 100 acquisitions. This addresses the issues we saw in previous section where the click only model would benefit from early exploitation of non-optimal arms. Thompson samply and UCB would typically over explore in these situations too.
+	\item We can still integrate our prior information.
 	\item If arms have some common dependency, such as using the same creative it understands there is greater exploration value.
 	\item Policy responds to changes how we value events, underlying model, time horizons etc.
 	\item The approach is orthogonal to the underlying model, so that we can develop the underlying model without needing to update the decision algorithm.
 \end{itemize}
 
-An illustration:
-
-
-\includegraphics{BARLillustration.pdf}
-
-
-
-The limiting factor for approach is that the algorithm has exponential order cost and so can be computed exactly only for small games. Various sampling based approximations exist:
-
-\texttt{http://www.gatsby.ucl.ac.uk/~dayan/papers/guez\_jair2013.pdf}
-
-And we may be able to approximate the logic somehow. Otherwise it acts as a useful benchmark to assess more scalable strategies against.
-
-TODO - Slide 27 links to 'examples where Bayes optimal does not ﬁnd near optimal actions'.
-\texttt{http://mlg.eng.cam.ac.uk/mlss09/mlss\_slides/Littman\_1.pdf}
-
-
-
+The limiting factor for this approach is that the algorithm has exponential order cost and so can be computed exactly only for small games. Various sampling based approximations exist \texttt{http://www.gatsby.ucl.ac.uk/~dayan/papers/guez\_jair2013.pdf}. 
 
 \subsection{Results}
 
-\includegraphics{TSvsBARL.pdf}
-
 Using the same harness, we set up the experiment using a 'bayes-optimal' exploration algorithm. Due to the exponential order cost of this algorithm, we must keep the games to a small number of rounds. 
 
+\includegraphics[scale=0.9]{TSvsBARL.pdf}
 
-
-\section{Conclusions}
-
-\begin{itemize}
-	\item Need to use log values of p.
-	\item Clustering based on $a_i$ creates false correlations.
-	\item Clustering based on c does not create false correlations.
-	\item Using c greater than 0, correlations do not show up. But become stronger for c gt 1, c gt 2. This is because it reduces the noise of all the small-n zero and one values.
-	\item Filter based on realized CTR is no use as it does not help with (3). Needs a correlation measure which properly accounts for likelihood weight of response - closest thing is glm.
-	\item Binomial GLM does the best job of (4), though does not consider error in dependent variable.
-\end{itemize}
+We see both Bayes Adaptive strategies improve on their Thompson Sampling equivalents. The strategy combining the improved model as well as the optimal decision policy offers very significant benefits.
 
 \pagebreak
 

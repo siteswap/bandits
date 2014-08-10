@@ -289,7 +289,7 @@ barl.illustration <- function(){
   # choice that matters.
   # Is this same as Gittins index? Can we reduce the computation?
   
-  par(mfrow=c(2,3))
+  par(mfrow=c(3,2))
   maxt <- 8
   results <- c(1,0,0,0,0,0,0,0,0,0,0,0)
   mp <- data.frame(a=c(1,4,7),b=c(1,3,5))
@@ -308,7 +308,10 @@ barl.illustration <- function(){
     vals <- getVals(mp,maxt=(maxt-t+1))
     plot(x=t:maxt,vals[,1],type='l',ylim=c(min(vals),max(vals)),xlim=c(1,maxt),
          ylab="Q value",xlab="Time Horizon",
-         main=paste("Q value of each arm under prior: \n",toString(mp)))
+         main=paste("Q value of arms",
+                    "\n Alpha:",toString(mp$a),
+                    "\n Beta:",toString(mp$b)
+                    ))
     lines(x=t:maxt,vals[,2],col="red")
     lines(x=t:maxt,vals[,3],col="blue")
     abline(v=t)
@@ -320,4 +323,6 @@ barl.illustration <- function(){
   }
   
 }
+
+
 
