@@ -127,7 +127,7 @@ p1 <- ggplot(data=df1, aes(x=round,y=regret,colour=strategy)) +
                  "\n prior(q):",toString(prior[,c(1,2)]),
                  "\n prior(p):",toString(prior[,c(3,4)])
                   ))
-p1
+
 
 prior <- data.frame(aq=1,bq=1,ap=1,bp=1) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
@@ -155,7 +155,8 @@ p3 <- ggplot(data=df3, aes(x=round,y=regret,colour=strategy)) +
                  "\n prior(p):",toString(prior[,c(3,4)])
   ))
 
-prior <- data.frame(aq=1,bq=3,ap=4,bp=6) 
+
+prior <- data.frame(aq=2,bq=10,ap=1,bp=1) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
 df4 <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
 
@@ -168,9 +169,38 @@ p4 <- ggplot(data=df4, aes(x=round,y=regret,colour=strategy)) +
                  "\n prior(p):",toString(prior[,c(3,4)])
   ))
 
+# Something where acqs is really bad
+prior <- data.frame(aq=1,bq=20,ap=1,bp=1) 
+initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
+df5 <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
+
+p5 <- ggplot(data=df5, aes(x=round,y=regret,colour=strategy)) + 
+  geom_line() +
+  geom_errorbar(aes(ymin=regret-se, ymax=regret+se), width=.1, alpha=.5) +
+  ggtitle( paste(
+    "\n Arms: ",toString(arms),
+    "\n prior(q):",toString(prior[,c(1,2)]),
+    "\n prior(p):",toString(prior[,c(3,4)])
+  ))
+
+# Same again
+arms <- 30
+prior <- data.frame(aq=1,bq=20,ap=1,bp=1) 
+initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
+df6 <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
+
+p6 <- ggplot(data=df6, aes(x=round,y=regret,colour=strategy)) + 
+  geom_line() +
+  geom_errorbar(aes(ymin=regret-se, ymax=regret+se), width=.1, alpha=.5) +
+  ggtitle( paste(
+    "\n Arms: ",toString(arms),
+    "\n prior(q):",toString(prior[,c(1,2)]),
+    "\n prior(p):",toString(prior[,c(3,4)])
+  ))
 
 
-grid.arrange(p1, p2, p3, p4, ncol = 2, main = "Thompson Sampling \n clicks vs acquisitions vs both ")
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 2, 
+             main = "Thompson Sampling \n clicks vs acquisitions vs both ")
 
 
 # ggplot(data=df, aes(x=X2,y=value,colour=X1)) + 
@@ -227,20 +257,20 @@ arms <- 2 # Stick to 2 arms for these short campaigns
 prior <- data.frame(aq=2,bq=6,ap=1,bp=1) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
 campaignLen <- 15
-trials <- 100
-strats <- c(adtk.ts_acqs,adtk.ts_both,adtk.barl,adtk.barl_both)
-strat_names <- c("ts_acqs","ts_both","ba_acqs","ba_both")
+trials <- 1000
+strats <- c(adtk.ts_both,adtk.barl,adtk.barl_both,adtk.ts_clicks)
+strat_names <- c("ts_both","ba_acqs","ba_both","ts_clicks")
 
 df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
 
 ggplot(data=df, aes(x=round,y=regret,colour=strategy)) + 
   geom_line() +
   geom_errorbar(aes(ymin=regret-se, ymax=regret+se), width=.1, alpha=.5) +
-  ggtitle( paste("Thompson Sampling vs Bayes Adaptive \n (both) \n r:",
-               toString(round(initVals$q*initVals$p,2)),
-               "\n p:",toString(round(initVals$p,2)),
-               "\n q:",toString(round(initVals$q,2))
-               ))
+  ggtitle( paste("Thompson Sampling vs Bayes Adaptive RL",
+    "\n Arms: ",toString(arms),
+    "\n prior(q):",toString(prior[,c(1,2)]),
+    "\n prior(p):",toString(prior[,c(3,4)])
+  ))
 
 
 
@@ -277,7 +307,8 @@ barl.illustration <- function(){
     
     vals <- getVals(mp,maxt=(maxt-t+1))
     plot(x=t:maxt,vals[,1],type='l',ylim=c(min(vals),max(vals)),xlim=c(1,maxt),
-         main=paste("Index value of each arm \n",toString(mp)))
+         ylab="Q value",xlab="Time Horizon",
+         main=paste("Q value of each arm under prior: \n",toString(mp)))
     lines(x=t:maxt,vals[,2],col="red")
     lines(x=t:maxt,vals[,3],col="blue")
     abline(v=t)

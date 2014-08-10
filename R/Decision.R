@@ -39,6 +39,14 @@ adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,true
   return(mab)
 }
 
+# Documented model 4.
+adtk.m4 <- function(vals){
+  c <- rbinom(1,1,vals$p)
+  a <- rbinom(1,c,vals$q)
+  c(a,c,1)
+}
+
+
 # Thompson - choose according to how frequently arm is maximum.
 
 

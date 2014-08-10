@@ -255,7 +255,7 @@ TODO - vgam library has problems fitting non betabinom cluster data.
 \end{tabular}
 \end{table}
 
-\subsection{Performance tests}
+\subsection{Performance tests - Model}
 
 
 \subsection{Regret}
@@ -265,56 +265,50 @@ We define regret as TODO  use standard notation.
 \subsection{Test harness}
 
 \begin{enumerate}
-	\item  User sets prior distribution defined by alpha and beta values for p and q.
-	\item  A set of p and q values are sampled from this prior once.
-	\item   Each strategy is provided with the prior alpha beta values and must infer the true values of p and q. The test harness 
-calls on the strategy to return an arm number. The test harness then draws a single sample from a distribution using the 
-true p and q values for this arm. The sample is a tuple $(acquisition,click,views)$. The strategy is given the result of this 
-sample so that it may update it's knowledge. The mean regret for the strategy is also updated.
-	\item   Step 3 is iterated for 300 rounds i.e. MAB has a finite horizon of 300.
-	\item   Steps 3 and 4 are repeated 10 times so that we can calculate mean regret and standard deviation for each round.
+	\item User sets prior distribution defined by alpha and beta values for p and q.
+	\item We use this prior as a generative model to sample a set of p and q values.
+	\item Each strategy is provided with the prior alpha beta values and must infer the true values of p and q. The test harness calls on the strategy to return an arm number. The test harness then draws a single sample from a distribution using the true p and q values for this arm. The sample is a tuple $(acquisition,click,views)$. The strategy is given the result of this sample so that it may update it's knowledge. The mean regret for the strategy is also updated.
+	\item Step 3 is iterated a set number of rounds i.e. the time horizon for the MAB.
+	\item Steps 2, 3 and 4 are repeated 100 times so that we can calculate mean regret.
+	\item A standard error for the mean values is calculated using a bootstrap method.
 \end{enumerate}
-
 
 \subsection{Strategies}
 
 \begin{description}
-	\item[ts clicks]  Each arm is initialized with a beta prior using the alpha and beta values for p. Arms are chosen using Thompson 
-sampling based on the probability of each arm having maximum p. The algorithm seeks to optimize clicks only, though regret 
-is still calculated in same way.
-	\item[ts both]  Each arm is initialized with beta prior for both p and q. Arms are chosen using Thompson sampling based on the 
-probability of each arm having maximum pq. Since the distribution of pq does not in general have an analytic form, we use 
-sampling. The priors on p and q are updated in the usual way.
-	\item[ts acqs]  The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not 
-directly translate in to a Beta prior on pq, we estimate a Beta prior for pq using the mean and variance of p and q. This 
-new Beta prior is updated in the usual way with acquisitions and views.
+	\item[ts clicks]  Each arm is initialized with a beta prior using the alpha and beta values for p. Arms are chosen using Thompson sampling based on the probability of each arm having maximum p. The algorithm seeks to optimize clicks only, though regret is still calculated in same way.
+	\item[ts both]  Each arm is initialized with beta prior for both p and q. Arms are chosen using Thompson sampling based on the probability of each arm having maximum pq. Since the distribution of pq does not in general have an analytic form, we use sampling. The priors on p and q are updated in the usual way.
+	\item[ts acqs]  The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not directly translate in to a Beta prior on pq, we estimate a Beta prior for pq using the mean and variance of p and q. This new Beta prior is updated in the usual way with acquisitions and views.
 \end{description}
 
 \subsection{Validation}
 
-We run a set of validation checks to make sure we are not favouring one strategy in some extrinsic way - such as a more 
-informative prior or more accurate posterior sampling.
+We run a set of validation checks to make sure we are not favouring one strategy in some extrinsic way - such as a more informative prior or more accurate posterior sampling.
 
 \begin{enumerate}
-	\item  We give p a point prior at value 1. With this, we expect to see the same performance from ts acqs and ts both. ts clicks 
-should select arms arbitrarily.
-	\item  We give q a point prior at value 1. With this, we expect to see the same performance from all 3 strategies as they are 
-all 'learning' click rate.
-	\item  We give both p and q flat priors. We expect to see the same performance from ts acqs and ts both as our analysis shows 
-this is a special case, equivalent to modelling acquisitions only.
+	\item  We give p a point prior at value 1. With this, we expect to see the same performance from ts acqs and ts both. ts clicks should select arms arbitrarily.
+	\item  We give q a point prior at value 1. With this, we expect to see the same performance from all 3 strategies as they are all 'learning' click rate.
+	\item  We give both p and q flat priors. We expect to see the same performance from ts acqs and ts both as our analysis shows this is a special case, equivalent to modelling acquisitions only.
 \end{enumerate}
 
 \subsection{Descriptive results}
 
+\includegraphics{P1to6.pdf}
+
 \begin{description}
-	\item[ts clicks]  typically reduces regret very quickly particularly with few arms and high variance on p. But over longer 
-periods loses out to ts acqs and ts both since the best arm does not always have the highest rate of clicks. If there is a 
-high variance on q, it can go very wrong.
-	\item[ts both]  performs well for long trials or where q can take on high values. But typically learns slowly, particularly when 
-q has small values.
-	\item[ts acqs]   robust to the pathological cases that see poor performance from ts clicks and ts acqs, and in certain cases 
-produced significantly improved results on both.
+	\item[ts clicks]  typically reduces regret very quickly particularly with few arms and high variance on p. But over longer periods loses out to ts acqs and ts both since the best arm does not always have the highest rate of clicks. If there is a high variance on q, it can go very wrong.
+	\item[ts both]  performs well for long trials or where q can take on high values. But typically learns slowly, particularly when q has small values.
+	\item[ts acqs]   robust to the pathological cases that see poor performance from ts clicks and ts acqs, and in certain cases produced significantly improved results on both.
 \end{description}
+
+We also note
+\begin{enumerate}
+	\item Ts clicks initially beats ts both, though this advantage goes away once the number of arms is increased. We hypothesise this is a feature of Thompson sampling rather than the model - by ignoring some of the uncertainty ts clicks gains an early exploitation benefit.
+	\item As the number of arms goes up, the regret increases. Possibly harder to find 'best arm' given more arms, but possibly a sign of over-exploration.
+\end{enumerate}
+
+We consider these are issues concerning the decision algorithm (Thompson sampling in this case) and address this issues in the next section.
+
 
 \subsection{Issues with testing}
 
@@ -327,6 +321,50 @@ We can look at mean regret, but will find this result is dominated by examples w
 We also deal with the problem of high variance, by looking not at the variance of results, but standard error of the mean. 
 This is more meaningful as it tells us whether we can have faith in our mean calculation. This can be achieved through 
 bootstrapping - needs to be with replacement.
+
+\section{Performance testing - Decision policy}
+
+In the previous section, we demonstrated that a more sophisticated model offered stronger inference and could reduce MAB regret. But we also noted a couple of instances where performance was not as good as it could be. 
+
+With this in mind, we now look at options for decision algorithms. In particular we ask the question - given varying number of arms and campaign length, what is the best policy?
+
+For given priors, we can define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown payoffs. We can turn this in to a many state MDP with known payoff functions. Each state represents one possible value of the posterior. Each transition probability is given it's expected value based on the current posterior. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation from optimal control theory.
+
+TODO - Reference Bayes Adaptive Reinforcement learning
+
+This solution has a number of particularly attractive characteristics over Thompson sampling and UCB:
+\begin{itemize}
+	\item We see that for small numbers of rounds, the algorithm purely exploits the high expectation arms, since there are too few rounds for the high variance arms to produce enough positive results to change our later decisions. This is very relevant for our domain where we may have millions of arms (sites x placements x creatives x userType) but only a few 100,000 rounds and expectation of only a few 100 acquisitions. This addresses the issues we saw in previous section. TS and UCB would over explore in these scenarios.
+	\item If arms have some common dependency, such as using the same creative it understands there is greater exploration value.
+	\item Policy responds to changes how we value events, underlying model, time horizons etc.
+	\item The approach is orthogonal to the underlying model, so that we can develop the underlying model without needing to update the decision algorithm.
+\end{itemize}
+
+An illustration:
+
+
+\includegraphics{BARLillustration.pdf}
+
+
+
+The limiting factor for approach is that the algorithm has exponential order cost and so can be computed exactly only for small games. Various sampling based approximations exist:
+
+\texttt{http://www.gatsby.ucl.ac.uk/~dayan/papers/guez\_jair2013.pdf}
+
+And we may be able to approximate the logic somehow. Otherwise it acts as a useful benchmark to assess more scalable strategies against.
+
+TODO - Slide 27 links to 'examples where Bayes optimal does not ﬁnd near optimal actions'.
+\texttt{http://mlg.eng.cam.ac.uk/mlss09/mlss\_slides/Littman\_1.pdf}
+
+
+
+
+\subsection{Results}
+
+\includegraphics{TSvsBARL.pdf}
+
+Using the same harness, we set up the experiment using a 'bayes-optimal' exploration algorithm. Due to the exponential order cost of this algorithm, we must keep the games to a small number of rounds. 
+
 
 
 \section{Conclusions}
