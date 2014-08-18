@@ -83,6 +83,25 @@ adtk.ts_acqs <- function(mab){
   adtk.ts(mab$arms,mab$res$a,mab$res$n,alpha,beta) 
   } 
 
+# TODO - needs further unit testing / validation.
+adtk.gi_clicks <- function(mab){ 
+  
+  # Use method of moments to get estimate parameters
+  # for equivalent beta distribution.
+  pr <- mab$prior
+  t <- mab$len - mab$round + 1
+  a <- mab$res$a
+  c <- mab$res$c
+  n <- mab$res$n
+  indices <- mapply(gi.v,a=pr$ap+c,b=pr$bq+n-c,t=t)
+  equalBestArms <- which(indices==max(indices))
+  if(length(equalBestArms)==1){
+    return(equalBestArms)
+  } else {
+    return(sample(equalBestArms,size=1))
+  }
+} 
+
 adtk.ts_clicks <- function(mab){ adtk.ts(mab$arms,mab$res$c,mab$res$n,mab$prior$ap,mab$prior$bp) }
 
 adtk.ts_both <- function(mab){ # TODO - much duplicate code 

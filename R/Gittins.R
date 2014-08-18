@@ -54,6 +54,8 @@ v <- function(a,b,t){
   }
 }
 
+gi.v <- v
+
 gi.h <- hash()
 # clear(gi.h)
 
