@@ -312,8 +312,8 @@ barl_both.q <- function(l,mp,t){
       fq <- max(sapply(1:L,FUN=barl_both.q,mp=mp,t=t-1))
       h[k] <- fq
     }
-    # prob of a click
-    pc <- mp[l,"ap"]/(mp[l,"bp"]+mp[l,"ap"])
+    # prob of a click, no acq
+    pc <- mp[l,"bq"]/(mp[l,"bq"]+mp[l,"aq"]) * mp[l,"ap"]/(mp[l,"bp"]+mp[l,"ap"]) 
     
     # Quality acq
     mp$bq[l]  <- mp$bq[l] - 1

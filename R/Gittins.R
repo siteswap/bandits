@@ -65,8 +65,7 @@ gi.h <- hash()
 ### Profiling GI code ###
 #########################
 
-# There may be faster implementations
-# already out there:
+# There may be faster implementations already out there:
 https://sites.google.com/site/lorenzodigregorio/gittins-index
 # Nino-Mora:
 http://halweb.uc3m.es/jnino/eng/pubs/2011-ijoc.pdf

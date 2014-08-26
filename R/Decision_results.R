@@ -329,10 +329,10 @@ barl.illustration <- function(){
 #########################################
 
 
-arms <- 5 # Stick to 2 arms for these short campaigns
+arms <- 10 # Stick to 2 arms for these short campaigns
 prior <- data.frame(aq=1000,bq=1,ap=1,bp=1) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
-campaignLen <- 20
+campaignLen <- 40
 trials <- 100
 strats <- c(adtk.gi_clicks,adtk.ts_clicks)
 strat_names <- c("gi_clicks","ts_clicks")
@@ -342,7 +342,7 @@ df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
 ggplot(data=df, aes(x=round,y=regret,colour=strategy)) + 
   geom_line() +
   geom_errorbar(aes(ymin=regret-se, ymax=regret+se), width=.1, alpha=.5) +
-  ggtitle( paste("Thompson Sampling vs Bayes Adaptive RL",
+  ggtitle( paste("Gittins Index vs Thompson Sampling - Clicks only",
                  "\n Arms: ",toString(arms),
                  "\n prior(q):",toString(prior[,c(1,2)]),
                  "\n prior(p):",toString(prior[,c(3,4)])
