@@ -330,21 +330,23 @@ barl.illustration <- function(){
 
 
 arms <- 10 # Stick to 2 arms for these short campaigns
-prior <- data.frame(aq=1000,bq=1,ap=1,bp=1) 
+prior <- data.frame(aq=1,bq=20,ap=1,bp=1) 
 initVals <- data.frame(q=rbeta(arms,shape1=prior$aq,shape2=prior$bq),p=rbeta(arms,shape1=prior$ap,shape2=prior$bp))
-campaignLen <- 40
+campaignLen <- 50
 trials <- 100
-strats <- c(adtk.gi_clicks,adtk.ts_clicks)
-strat_names <- c("gi_clicks","ts_clicks")
+strats <- c(adtk.ts_both,adtk.ts_acqs,adtk.gi_both)
+strat_names <- c("ts_both","ts_acqs","gi_both")
 
 df <- compareStrats(arms,initVals,campaignLen,trials,strats,strat_names,prior)
 
 ggplot(data=df, aes(x=round,y=regret,colour=strategy)) + 
   geom_line() +
   geom_errorbar(aes(ymin=regret-se, ymax=regret+se), width=.1, alpha=.5) +
-  ggtitle( paste("Gittins Index vs Thompson Sampling - Clicks only",
+  ggtitle( paste("Gittins Index vs Thompson Sampling",
                  "\n Arms: ",toString(arms),
                  "\n prior(q):",toString(prior[,c(1,2)]),
                  "\n prior(p):",toString(prior[,c(3,4)])
   ))
+
+
 

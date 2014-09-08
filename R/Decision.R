@@ -1,6 +1,6 @@
 library(plyr)
 library(hash)
-
+library(R.matlab)
 
 adtk.mab <- function(arms=5,campaignLen=1000,DFUN=adtk.ts_acqs,MFUN=adtk.m4,trueVals,prior) {
   
@@ -94,6 +94,43 @@ adtk.gi_clicks <- function(mab){
   c <- mab$res$c
   n <- mab$res$n
   indices <- mapply(gi.v,a=pr$ap+c,b=pr$bq+n-c,t=t)
+  equalBestArms <- which(indices==max(indices))
+  if(length(equalBestArms)==1){
+    return(equalBestArms)
+  } else {
+    return(sample(equalBestArms,size=1))
+  }
+} 
+
+# Requires MATLAB server connection
+# Create singleton
+adtk.gi_both.isOpen <- FALSE # TODO - protect with exsits()
+adtk.gi_both.matlab <- 0
+adtk.gi_both <- function(mab){ 
+  
+  # Use method of moments to get estimate parameters
+  # for equivalent beta distribution.
+  pr <- mab$prior
+  t <- mab$len - mab$round + 1
+  a <- mab$res$a
+  c <- mab$res$c
+  n <- mab$res$n
+  
+  if(!adtk.gi_both.isOpen){
+    Matlab$startServer()
+    adtk.gi_both.matlab <- Matlab()
+    adtk.gi_both.isOpen <- open(adtk.gi_both.matlab)
+    evaluate(adtk.gi_both.matlab, "addpath '/home/alex/git/bandits/matlab' ")
+    evaluate(adtk.gi_both.matlab, "global h;", "h = containers.Map;")
+  }
+  # close(matlab)
+  
+  M <- cbind(rep(t,length(n)),pr$ap+c,pr$bp+(n-c),pr$aq+a,pr$bq+(c-a))  
+  setVariable(adtk.gi_both.matlab,M=M)
+  evaluate(adtk.gi_both.matlab, "gi=GIBoth(M);")
+  gi <- getVariable(adtk.gi_both.matlab,"gi")
+  indices <- gi$gi
+  
   equalBestArms <- which(indices==max(indices))
   if(length(equalBestArms)==1){
     return(equalBestArms)

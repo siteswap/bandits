@@ -1,14 +1,41 @@
 % import containers.Map
 
-% TODO
-% Interop with R and how to run experiment:
-% - hash values
-% - reduce R range for greater accuracy
-function gi = GIBoth(d,L)
+% Take a set of params e.g.
+% p=horzcat((11:20)',ones(10,4))
+function gi = GIBoth(p)
 
-l=(0:L)/L;
+L=100;
+rmin=0;
+rmax=1;
+arms=size(p,1);
+gi=zeros(arms,1);
+
+for i=1:arms
+    gi(i)=GIBoth0(p(i,1),L,p(i,2),p(i,3),p(i,4),p(i,5),rmin,rmax);
+end
+
+end
+
+
+function gi0 = GIBoth0(d,L,alphap,betap,alphaq,betaq,rmin,rmax)
+
+% Needs to be declared and initialized elsewhere
+% h = containers.Map
+global h;
+
+k=mat2str([d,alphap,betap,alphaq,betaq]);
+if h.isKey(k)
+   gi0=h(k);
+   return 
+end
+
+if rmin==0
+    rmin=alphap/(alphap+betap) * alphaq/(alphaq+betaq);
+end
+
+l=rmin:(rmax-rmin)/L:rmax;
 % R for final set of states
-rstate = genStates(d);
+rstate = genStates(d,alphap,betap,alphaq,betaq);
 n=nstates(d);
 Vd= max(repmat(l,n,1), repmat(rstate(:,5),1,L+1));
 
@@ -16,7 +43,7 @@ for r=flip(1:(d-1))
     % Generate transition matrix
     P=trans(r,rstate);
     Vd=P*Vd;
-    rstate = genStates(r);
+    rstate = genStates(r,alphap,betap,alphaq,betaq);
     Rr = rstate(:,5);
     n=nstates(r);
     fixedArm=(d-r+1)*repmat(l,n,1);
@@ -26,7 +53,9 @@ end
 
 % Note, assumes l is ordered small to large.
 [C,I] = min(abs(Vd - l*d));
-gi = l(I);
+% gi = l([I-1 I]);
+gi0 = l(I);
+h(k)=gi0;
 
 end
 
@@ -64,12 +93,7 @@ function n = nstates(r)
     n=(r+1)*r/2;
 end
 
-function rstate = genStates(r)
-
-alphap=1;
-betap=1;
-alphaq=1;
-betaq=1;
+function rstate = genStates(r,alphap,betap,alphaq,betaq)
 
 % List of states for given round
 % Ordered first by increasing clicks, 
