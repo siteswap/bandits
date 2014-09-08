@@ -42,11 +42,11 @@ adtk.m1 <- function(num,p,q){
 #############################
 
 
-adtk.m3 <- function(num){
+adtk.m3 <- function(num,s1p,s2p,s1q,s2q){
   
   n <- sample(site_domain$imps,size=num,replace=TRUE)
-  c <- rbetabinom.ab(n=num,size=n,shape1=1,shape2=10000)
-  a <- rbetabinom.ab(num,size=c,shape1=6,shape2=4)
+  c <- rbetabinom.ab(n=num,size=n,shape1=s1p,shape2=s2p)
+  a <- rbetabinom.ab(num,size=c,shape1=s1q,shape2=s2q)
   d <- data.frame(a,c,n)
   d$p <- d$c/d$n
   d$q <- d$a/d$c
@@ -95,14 +95,17 @@ adtk.m6 <- function(num,s1p,s2p,s1q,s2q,theta){
 ##############################
 
 
-adtk.plot <- function(d){
+adtk.plot <- function(d,title){
 
-	gp <- ggplot(data=d) + 
-	  aes(x = log(a/c), y = log(c/n))
+	gp <- ggplot(data=d) + aes(x = log(a/c), y = log(c/n))
 	if(is.null(d$clust)){
-	  gp + geom_point(aes(size = log(n),alpha = 0.3))
+	  gp <- gp + geom_point(aes(size = log(n),alpha = 0.3)) + ggtitle(title)
 	}else{
-	  gp + geom_point(aes(size = log(n),alpha = 0.3, color=as.factor(c("good","bad"))[clust+1]))
+	  d$group <- as.factor(c("good","bad"))[d$clust+1]
+	  gp <- ggplot(data=d) + aes(x = log(a/c), y = log(c/n))
+	  gp <- gp + geom_point(aes(size = log(n),alpha = 0.3, color=group)) +
+      ggtitle(title)
 	}
+  gp
 }
 

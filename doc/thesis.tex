@@ -168,14 +168,13 @@ otherwise stated.\\
 \declaration %Insert plagiarism statement
 
 \begin{abstract}
-This is a \LaTeX{} template to be used for project theses by the students of the Imperial College MSc in Statistics. Please have a look at the \verb|*.tex| source and the code comments therein. You may use this template with only minor changes, or make any major style changes you desire (e.g. redesigning the title page, adding headers,...), or you may use a different template, or you may write your own approach from scratch, or you may just use some bits and pieces from the template's \LaTeX{} code. It's up to you. Note that resources on how to use \LaTeX{} are available on Blackboard under `R\&{}LaTeX intro'.
 
-This template will quote relevant sections from the MSc in Statistics student handbook throughout; e.g.
-\begin{myquote}
-The abstract should be a brief statement of the aims and outcomes of the project, to summarise/advise
-even for a casual reader!
-\end{myquote}
+Our work formulates the realtime bidding problem as a multi-armed bandit. In particular the work focuses on the relationships between dependent binomial variables, with the ability to model a K-stage binomial proces and offering improved decision rules for MAB style problems.
+
+So far we have assumed each 'lever' to be a website. Though models could just as well apply to a particular placement or creative.
+
 \end{abstract}
+
 \newpage
 \chapter*{Acknowledgements}
 Thank you supervisor/friends/family/pet.
@@ -201,88 +200,28 @@ Include an acknowledgement.
 %\newpage
 
 
-%\pagestyle{headings} % uncomment this if you want headers on your pages. Google fancyhdr or look into the options of scrreprt if you want different headers.
-\chapter{This might be some kind of Introduction or Literature Review}
-\begin{myquote}
-The following are guidelines only and need to be taken with common sense and adapted for the needs of
-your particular presentation.
 
-The recommended structure consists of an abstract, a Table of Contents (Chapter/Section numbers),
-an introduction, a middle section presenting the results and a conclusion and summary section followed
-by a bibliography. Sections should be numbered, as should pages, graphs/tables, equations. The graphs
-and tables should appear at their natural location in the text. Any long program listings should be put in
-appendices at the end.
+\chapter{Introduction}
 
-It is important that references to other research work consulted or results borrowed or shared should be
-properly documented and you should copy the style of reference of one of the research articles you consult,
-i.e. with referencing also included within the text as well as at the end. It is also a good idea to acknowledge
-the help that your supervisor has given you!
-\end{myquote}
-\begin{myquote}
-The introduction should attempt to set your work in the context of other work done in the field. It
-should demonstrate that you are aware of what you are doing, and how it relates to other work. It should
-show that you have referenced other work.
-\end{myquote}
+Our research seeks to formulate the RTB bidding problem as a MAB. There are no papers addressing this directly, we therefore study RTB and MAB research separately. There are a several dimensions - estimating CTR rate for different placements, estimating acquisition rate and optimizing bid level over course of campaign.
 
-There's been loads published about what I'm doing. Luckily I went through all the literature and organised it so that you don't have to.%
-\footnote{Not really. Also bear in mind that footnotes should be used sparingly, if at all.}
-% Note that in the footnote above I suppressed the newline character by finishing my line with %. This way, there is no space between the end of the sentence and the footnote mark.
+Richardson et al. ~\cite{Richardson:2007:PCE:1242572.1242643} discuss the benefits and limitations of a priori CTR prediction. Chen et al ~\cite{Chen:2011:RBA:2020408.2020604} and Ghosh et al. (Adaptive Bidding) ~\cite{Ghosh:2009:ABD:1526709.1526744} develop algorithms which optimize bid levels online. While Chen et al ~\cite{Chen:2011:RBA:2020408.2020604} focus on dynamic bid adjustment strategies to optimally meet campaign constraints, Ghosh et al. ~\cite{raey} look to 'learn' the bid distribution acknowledging the E-E tradeoff, though not explicitly formulating as a MAB problem.
+
+Li et al. ~\cite{Li:2010:CAP:1772690.1772758} explore the contextual multiarmed bandit problem as applied to news article recommendation, while Yue and Pandey use knowledge about the item and the arm inter-relatedness to speed convergence of the bandit arms.
+
+No papers were found formulating the RTB as a MAB explicitly. Also, many practical aspects of the RTB problem have been overlooked - such as predicting acquisition rate, optimal explore-exploit tradeoffs for ad placement given time/budget limited campaigns. There also appears room to improve the synthesis of online and offline optimisation by applying Bayesian principles.
+
+\section{Objective}
+Our objective is to develop a model which minimizes the cost per acquisition over the course of a campaign, whilst meeting budget constraints. We propose a number of innovations:
+\begin{enumerate}
+	\item A model to estimate CPA (as well as CTR).
+	\item To elegantly address the tradeoff between offline and online estimation (discussed by Richardson) by offline generation of Bayesian prior for CTR.
+	\item To model the E-E tradeoff as a MAB problem, putting a value on exploration for long and short campaigns.
+	\item To incorporate the time and budget limitations in exploration of the MAB problem.
+\end{enumerate}
 
 
-
-\chapter{Then you get to the meaty stuff}
-\begin{myquote}
-The main sections should guide the reader through your results, analysing them and explaining them.
-It should show both your successes and your failures in trying to solve your problem (your unsuccessful
-attempts should be discussed, especially if you have ideas or explanations as to why they failed).
-\end{myquote}
-\section{With things like Methods}
-It turns out that doing mathematics properly requires paying attention to many subtle details. For example
-\begin{equation}
-2=2+(1-1)=(2-1)+1=1+1.
-\label{eq:obvious}
-\end{equation}
-Beware of the different mathematical fonts, and note that often punctuation should be included at the end of equations. For example, if you understand that 
-\begin{equation*}
-0=c\cdot o \cdot s^2 \cdot 0=\int_{-\pi}^\pi cos^2(x) dx \neq \int_{-\pi}^\pi \cos^2(x) \mathrm{d}x=\pi,
-\end{equation*}
-then your equations will look much nicer.
-\begin{myquote}
-Maths: In formulas use \verb|\exp| and not \verb|exp|.
-\end{myquote}
-\subsection{organised into subsections if you want}
-Because well ordered thoughts are easier to follow.
-\subsubsection{or even subsubsections}
-And paragraphs. You most likely \emph{don't} want to use the \verb|\paragraph| command for this; just skip a line between paragraphs (or use \verb|\par| or \verb|\indent|).
-
-You may wish to have a separate \verb|*.tex| file for each chapter, and use the \verb|\include{}| (or \verb|\input{}|) commands, if that helps you keep things organised. You can then use \verb|\includeonly{}| to only compile the chapter(s) you are currently working on.
-
-
-
-
-
-
-
-
-
-\section{Introduction}
-
-The work focuses on the relationships between dependent binomial variables, with the intention of modelling K-stage binomial processes and offering improved decision rules for MAB style problems.
-
-So far we have assumed each 'lever' to be a website. Though models could just as well apply to a particular placement or creative.
-
-We hope that the models can be further expanded to include a more complex hierarchy, for example, campaign-site-placement. Or could dependencies on for example, fixed effect regressors for creative or user category.
-
-We provide:
-\begin{itemize}
-	\item A set of models for dealing with dependent binomial data, including data generation functions.
-	\item A set of diagnostic tests for assessing the validity of each model for a novel dataset.
-	\item A framework for assessing the usefulness of each model against relevant loss functions for RTB problems.
-	\item Decision rules to optimise the explore-exploit trade off in RTB campaigns.
-\end{itemize}
-
-
-\section{Data}
+\chapter{Data}
 
 We have 3 vector valued random variables. The ith index represents the values for site domain i for a particular lineitem. In the context on a MAB problem, each index represents a lever. The variables are defined as:
 \begin{itemize}
@@ -291,9 +230,11 @@ We have 3 vector valued random variables. The ith index represents the values fo
 	\item \textbf{a} - number of acquisitions over same time period
 \end{itemize}
 
+\includegraphics{CTRvsCVR}
+
 TODO - bring in relevant sections of EDA document here.
 
-\section{Models}
+\chapter{Models}
 We define 7 models to fit the data, ultimately intending to model acquisitions.
 
 We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We then bring in intermediate clicks, hoping these can offer more information on the likelihood of future acqusitions. We find that clicks provide no information on acquisitions unless there is a dependency between p and q. We consider both a cluster model as well as a correlation model to model dependency between p and q.
@@ -392,7 +333,11 @@ As an alternative to model 6, where rate prediction will change abruptly between
 
 We use a relatively unused binomial correlation model, discussed in 'Bacon With Your Eggs? Applications of a New Bivariate Beta-Binomial Distribution'. 
 
-\section{Diagnostic testing}
+\subsection{Graphing data generated by Models}
+
+\includegraphics[scale=0.7]{SynthData}
+
+\chapter{Diagnostic testing}
 
 We take the approach of starting with a simple model and run further tests to decide whether there is evidence to expand the model. 
 
@@ -444,7 +389,7 @@ If we can choose a scalar test statistic, we can produce a p value of realized s
 
 Possibly very useful, need to be careful about the validity of the approximation given some small n.
 
-\section{ Performance testing - static loss functions }
+\chapter{ Performance testing - static loss functions }
 
 The previous diagnostic tests can help us build a probability model. Ultimately, we are interested in making optimal decisions with a certain loss function. 
 
@@ -457,7 +402,7 @@ We define 4 loss functions:
 	\item Volume weighted difference in realized CVR (relates closely to budget wasted). 
 	\item Vol weighted MSE.
 \end{enumerate}
-\section{Results}
+\chapter{Results}
 
 \subsection{Correlation measures}
 
@@ -500,7 +445,7 @@ TODO - vgam library has problems fitting non betabinom cluster data.
 \end{tabular}
 \end{table}
 
-\section{Conclusions}
+\chapter{Conclusions}
 
 \begin{itemize}
 	\item Need to use log values of p.
@@ -524,7 +469,7 @@ TODO - vgam library has problems fitting non betabinom cluster data.
 
 
 
-\section{ Simulation testing - Model 4}
+\chapter{ Simulation testing - Model 4}
 
 \subsection{Test harness}
 
@@ -581,7 +526,7 @@ We consider these are issues concerning the decision algorithm (Thompson samplin
 
 \pagebreak
 
-\section{Simulation testing - Bayes Adaptive policy}
+\chapter{Simulation testing - Bayes Adaptive policy}
 
 In the previous section, we demonstrated that a more sophisticated model offered stronger inference and could reduce MAB regret. But we also noted a couple of instances where performance was not as good as it might be. 
 
@@ -640,7 +585,7 @@ We see both Bayes Adaptive strategies improve on their Thompson Sampling equival
 
 
 
-\section{Scaling up}
+\chapter{Scaling up}
 Lai and Robbins ~\cite{lai1985asymptotically} proved that a class of decision algorithms meeting certain regret conditions were asymptotically optimal learners. This insight is the basis for the deterministic probability matching, UCB algorithms. 
 
 We note that the optimal asymptotic regret leaves scope for a large constant regret term, as we found in our experiments poor performance over limited horizons.
@@ -649,7 +594,7 @@ We conjecture that due to the high number of arms, and low success rate, in prac
 
 The bayes-optimal solutions remain attractive. Although the Bellman equation gives us optimal solution, the computational time has order ${arms}^{rounds}$ and so becomes infeasible for large trials. We discuss the options providing similar results with less computation.
 
-\section{Gittins Index}
+\chapter{Gittins Index}
 Gittins ~\cite{gittins1979bandit} was able to show that the MAB problem with geometrically discounted regret could be treated as an index problem, very similar to job scheduling. The intuition here is that since playing one arm does not affect the rewards of other arms, a value can be computed using only information about that arm. The value is the expected rate of reward under an optimal stopping rule.
 
 The calculation of this index typically involves choosing a number of rounds to look ahead, the less the discount factor, the more rounds are required to get a close approximation. Then calculate the value at round N and use backwards induction to calculate the value for round 0.
@@ -675,7 +620,13 @@ There are several ways to reduce the computational cost due to the number of arm
 Given that we are often working with very small rates, we might calculate GI by grouping the updates and enumerating only the more likely outcomes. For example, with a rate of 0.5\%, we might group by 1000 rounds and consider outcomes 0 to 12 which covers 0.998 of the distribution. 
 
 
+\includegraphics[scale=0.7]{GIBoth.pdf}
 
+
+\section{Extensions}
+
+
+We hope that the models can be further expanded to include a more complex hierarchy, for example, campaign-site-placement. Or could dependencies on for example, fixed effect regressors for creative or user category.
 
 
 
