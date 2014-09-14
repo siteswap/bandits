@@ -205,6 +205,8 @@ Include an acknowledgement.
 
 Our research seeks to formulate the real time bidding (RTB) problem as a multi-armed bandit (MAB). There are no papers addressing this directly, we therefore study RTB and MAB research separately. There are a several dimensions - estimating CTR rate for different placements, estimating acquisition rate and optimizing bid level over course of campaign.
 
+We first review current literature on RTB modelling. Current MAB approaches will be discussed separately in section 4. Model fitting is discussed in section 3.
+
 \section{Real Time Bidding}
 
 TODO - give quick background on RTB, CTR, CVR before launching in to lit review.
@@ -506,7 +508,16 @@ Typically bandits policies are assessed by how well they minimize \textit{regret
 \operatorname{regret}(\pi) &= \sum_{t=1}^T (\mu^{*} - \mu_{\pi(t)})
 \end{align}
 
+\section{PAC learning}
+
+PAC learning approaches look to limit the number of sub-optimal decisions (TODO add references). But this pure exploration approach does not naturally map to our goal of maximizing value from our campaign budget.
+
 \section{ Bayes Adaptive policy }
+
+For given priors, it is possible to define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown rewards. We can turn this in to a many state MDP with known rewards by representing each possible posterior value as a new state. Each transition probability is given it's expected value based on the current posterior. This idea is present in early discussions of sequential binomial decision problems (TODO 1965 paper) but has more recently been named Bayes adaptive reinforcement learning in machine learning literature. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation. Appendix provides an example of how this is calculated for model 4.
+
+TODO - Reference Bayes Adaptive Reinforcement learning,
+Optimal Adaptive Policies for Markov Decision Processes.
 
 The graphs below provide a demonstration of this policy. In each graph, we see which arm choice is optimal as a function of rounds remaining. Note the high expectation arm is preferred for short campaigns the moves toward the higher variance arms as the time horizon increases. The 6 panes show one possible scenario play out as arms are chosen and posteriors are updated.
 
@@ -521,8 +532,7 @@ This solution has a number of particularly attractive characteristics over proba
 	\item The approach is orthogonal to the underlying model, so that we can develop the underlying model without needing to update the decision algorithm.
 \end{itemize}
 
-The limiting factor for this approach is that the algorithm has exponential order cost and so can be computed exactly only for small games. Various sampling based approximations exist \texttt{http://www.gatsby.ucl.ac.uk/~dayan/papers/guez\_jair2013.pdf}. 
-
+The limiting factor for this approach is that the algorithm has exponential order cost and so can be computed exactly only for small games. Various sampling based approximations exist TODO \texttt{http://www.gatsby.ucl.ac.uk/~dayan/papers/guez\_jair2013.pdf}. 
 
 \section{ Heuristics } \label{sec:heuristics}
 
@@ -548,65 +558,59 @@ Agrawal and Goyal ~\cite{DBLP:journals/corr/abs-1111-1797} prove asymptotic opti
 Gittins ~\cite{gittins1979bandit} was able to show that the MAB problem with geometrically discounted regret could be treated as an index problem, meaning that the optimal decision rule is to select arm with highest index. That index could be calculated using only information about the arm. The intuition here is that since playing one arm does not affect the rewards of other arms, a value can be computed using only information about that arm. The value is the expected rate of reward under an optimal stopping rule.
 
 \begin{align}
-v(x) = \sup_{\tau > 0} E\left[ \sum_{t=0}^{\tau-1} a^t \mathcal{R}(s_t) | s_0 = s  \middle/  E\left[ \sum_{t=0}^{\tau-1} a^t | s_0 = s \right]  \right]
+v(s) = \sup_{\tau > 0} E\left[ \sum_{t=0}^{\tau-1} b^t \mathcal{R}(s_t) | s_0 = s  \middle/  E\left[ \sum_{t=0}^{\tau-1} b^t | s_0 = s \right]  \right]
 \end{align}
 
 Although the Gittins index is not optimal in the finite horizon case (the value of alternate arms changes as a result of the loss of 1 round), it is a very close approximation. Our testing (not presented) confirms this GI and BA strategies achieve near equal regret.
 
 As the calculation involves only 1 arm, the computation has significantly lower order, with the potential to share results between arms. Comparing the the Bayes Adaptive solution $O((\#\mathcal{A} \#\mathcal{P})^T)$, we instead have:
 
-\begin{enumerate}
+\begin{itemize}
 	\item $O(\#\mathcal{A} {\#\mathcal{P}}^T)$ - Exact method.
 	\item $O(\#\mathcal{A} T^{\#\mathcal{P}})$ - Calibration method.
-\end{enumerate}
+\end{itemize}
 
 \subsection{ Exact method }
 
+Gittins 1979 ~\cite{gittins1979bandit} describes an exact method for calculating the index for a finite horizon. 
+
+The calculation of this index typically involves choosing a number of rounds to look ahead. In infinite horizon game, the less the discount factor, the more rounds are required to get a close approximation. Then calculate the value at round N and use backwards induction to calculate the value for round 0.
+
 \subsection{ Calibration method }
 
-There are several methods looking for more computationally efficient calculation, the most popular being the calibration method where a grid of candidate GI values is used to obviate the need to recurse. See Nino-Mora ~\cite{nino2011computing} for an overview. The cost for these methods is still of order at least $rounds^3$ (depending on matrix multiplication algorithm used) and so will not scale to say a million rounds.
+There are several methods looking for more computationally efficient calculation, the most popular being the calibration method where a grid of candidate GI values is used to obviate the need to recurse. See Nino-Mora ~\cite{nino2011computing} for an overview. The cost for these methods is still exponential in the order rounds and so will not scale to say a million rounds without some approximations used.
 
-The calculation of this index typically involves choosing a number of rounds to look ahead, the less the discount factor, the more rounds are required to get a close approximation. Then calculate the value at round N and use backwards induction to calculate the value for round 0.
-
-We present results comparing GI to TS strategies with arms = 10, rounds = 50. We use the exact method described in Gittins 1979. Note that since this is a finite horizon game, there is no loss of accuracy associated with calculating a finite number of rounds.
-
-We demonstrate in the appendix that it is simple to adapt the GI for binomial bandits to the both model as it only requires taking expectations.
+We demonstrate in the appendix that it is simple to adapt the GI for binomial bandits to the both model as it only requires taking expectations. Note that since this is a finite horizon game, there is no loss of accuracy associated with calculating a finite number of rounds.
 
 \subsection{ Approximations }
 
 Noting that GI is a function of only 5 variables, we consider approximations. Brezzi and Lai ~\cite{brezzi2002optimal} provide a closed form (i.e. constant order) solution to the infinite horizon problem using a Normal approximation by relating the discrete time problem to a continuous time Wiener process.  The same paper references Lai ~\cite{lai1987adaptive} for asymptotically optimal solutions for the finite horizon, undiscounted problem for single parameter exponential family distributions. Burnetas and Katehakis ~\cite{burnetas1996optimal} extend this to multiparameter univariate distributions.
 
-The multiparameter solution would fit our both model well and provide opportunity to extend the funnel to include additional intermediate steps. Unfortunately, as earlier noted, our testing finds these approaches do not work well with the arms, rounds and rates we work with.
-
-
+The multiparameter solution would fit our both model well and provide opportunity to extend the funnel to include additional intermediate steps. Unfortunately, we note, our UCB and Thompson sampling testing finds these asymptotically optimal approaches do not work well with the arms, rounds and rates we work with.
 
 \section{ Lai and Robbins lower bound }
 
 \begin{align}
-\operatorname{regret}(T)  \leq  \frac{\ln(n)}{D_{KL}(\mu_j||\mu^{*})} % as n \to \inf
+\operatorname{regret}(\pi)  \leq  \frac{\ln(n)}{D_{KL}(\mu_j||\mu^{*})} % as n \to \inf
 \end{align}
 
 Lai and Robbins ~\cite{lai1985asymptotically} proved that a class of decision algorithms meeting certain regret conditions were asymptotically optimal learners. This insight is the basis for the deterministic probability matching, UCB algorithms. 
 
 
-We note that the optimal asymptotic regret leaves scope for a large constant regret term, as we found in our experiments poor performance over limited horizons.
-
-We conjecture that due to the high number of arms, and low success rate, in practise we do not get to the region where asymptotic behaviour dominates.
-
-The bayes-optimal solutions remain attractive. Although the Bellman equation gives us optimal solution, the computational time has order ${arms}^{rounds}$ and so becomes infeasible for large trials. We discuss the options providing similar results with less computation.
+We note that the optimal asymptotic regret leaves scope for a large constant regret term, as we found in our experiments poor performance over limited horizons. We conjecture that due to the high number of arms, and low success rate, in practise we do not get to the region where asymptotic behaviour dominates.
 
 \section{ UCB1 }
 
 There is a large family of index algorithms based on assigning an 'upper confidence bound' value to each arm. In these, we allow the estimated payoff $\hat{\theta}$ of the arm to increase up to a constraint based a maximum KL divergence of the parameter. The $\lambda$ value controlling the constraint will typically vary based on the number of times the arm has been played and the current round.
 
 \begin{align}
-u_j = \inf\{ \theta : \theta \geq \hat{\theta}, D_{KL}(\theta||\hat{\theta}) \geq \lambda\} 
+v_j = \inf\{ \mu : \mu \geq \hat{\mu_j}, D_{KL}(\mu||\hat{\mu_j}) \geq \lambda\} 
 \end{align}
 
 Where $n$ is the current round, $n_j$ is the number of times arm $j$ has been played, UCB1 algorithm assigns the arm an index according to rule:
 
 \begin{align}
-u_j = \hat{\theta_j} + \sqrt{ \frac{2 \ln{n}}{n_j}  }
+v_j = \hat{\mu_j} + \sqrt{ \frac{2 \ln{n}}{n_j}  }
 \end{align}
 
 Agrawal and Goyal ~\cite{DBLP:journals/corr/abs-1111-1797}, in their analysis of Thompson sampling demonstrated superior performance from Thompson sampling compared to a variety of modern UCB algorithms for binomial problems.
@@ -649,7 +653,7 @@ We run a set of validation checks to make sure we are not favouring one strategy
 
 \subsection{Plots}
 
-\includegraphics[scale=0.35]{P4to5UCB}
+\includegraphics[scale=0.5]{P4to5UCB}
 
 \includegraphics[scale=0.7]{P1to6.pdf}
 
@@ -668,20 +672,11 @@ We also note that as the number of arms goes up, the regret increases. This coul
 
 We consider these are issues concerning the decision algorithm (Thompson sampling) in the next section.
 
-\pagebreak
-
 \section{ Bayes Adaptive }
 
 In the previous section, we demonstrated that a more sophisticated model offered stronger inference and could reduce MAB regret. But we also noted a couple of instances where performance was not as good as it might be. 
 
 With this in mind, we now look at options for decision algorithms. In particular we ask the question - given varying number of arms and campaign length, what is the best policy? 
-
-PAC learning approaches look to limit the number of sub-optimal decisions (TODO add references). But this pure exploration approach does not naturally map to our goal of maximizing value from our campaign budget.
-
-For given priors, it is possible to define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown payoffs. We can turn this in to a many state MDP with known payoff functions. Each state represents one possible value of the posterior. Each transition probability is given it's expected value based on the current posterior. This is called the Bayes Adaptive MDP. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation from optimal control theory.
-
-TODO - Reference Bayes Adaptive Reinforcement learning,
-Optimal Adaptive Policies for Markov Decision Processes.
 
 \begin{description}
 	\item[ba both] Each arm is initialized with beta prior for both p and q. Arm with maximum Q value is always chosen, where multiple arms have same Q value, one is selected at random.
@@ -700,13 +695,9 @@ Using the same harness, we set up the experiment using a 'bayes-optimal' explora
 We see both Bayes Adaptive strategies improve on their Thompson Sampling equivalents. The strategy combining the improved model as well as the optimal decision policy offers very significant benefits.
 
 
-
-
-
-
 \section{Gittins Index}
 
-
+The bayes-optimal solutions remain attractive. Although the Bellman equation gives us optimal solution, the computational time becomes prohibitive for large trials. We turn to GI solutions to provide nearly identical results with less computation.
 
 \subsection{Plots}
 
