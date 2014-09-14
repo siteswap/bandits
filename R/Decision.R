@@ -170,7 +170,7 @@ adtk.ucb <- function(mab){
   
   # Action that maximizes xbar_j + sqrt(2*ln(n)/n_j)
   n <- mab$round
-  kj <- mab$res$a
+  kj <- mab$res$c # optimizing CTR
   nj <- mab$res$n
   
   # Pull each lever atleast once
@@ -178,8 +178,15 @@ adtk.ucb <- function(mab){
   
   x <- kj/nj + sqrt(2*log(n)/nj)
   
-  # Randomize choie when levers are equal
-  sample(which(x==max(x)),size=1) 
+  # Randomize choice when levers are equal
+  equalBestArms <- which(x==max(x))
+  if(length(equalBestArms)==1){
+    r <- equalBestArms
+  } else {
+    r <- sample(equalBestArms,size=1)
+  }
+  # print(c(r,x))
+  r
 }
 
 # Bayes adaptive RL
