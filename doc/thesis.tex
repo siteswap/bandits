@@ -215,6 +215,39 @@ Our research seeks to formulate the real time bidding (RTB) problem as a multi-a
 
 We first review current literature on RTB modelling. Current MAB approaches will be discussed separately in section 4. Research relating to binomial model fitting is discussed in section 3.
 
+\section{Motivation}
+
+We review current approaches and argue that current practises are severely lacking. Particular short comings are:
+
+\begin{enumerate}
+	\item Development of 'one-size-fits-all decision algorithms' and heuristics, without principled ways to customise tools to specific problems.
+	\item Over emphasis on asymptotic optimality and scalability overlooks poor performance on many common problems.
+\end{enumerate}
+
+We provide a template for a more a principled approach and demonstrate very substantial performance improvements. We demonstrate the importance of both:
+
+\begin{enumerate}
+	\item A well motivated custom model.
+	\item A decision policy based on that model over standard exploration algorithms.
+\end{enumerate}
+
+
+There are a range of games where a generic model and asymptotic performance policies are inappropriate:
+
+\begin{enumerate}
+	\item Games with a low number of rounds, for example RTB platforms with batched feedback. The performance of these games are dominated by constant order terms, not asymptotic performance. Our later results provide examples of this. 
+	\item Games with low information per round, for example, some RTB campaigns may only get one high-value acquisition for 1 million impressions. Here it is vital that our model leverage as much information as possible from other indicators.
+	\item Non-stationary rewards (restless bandits), have rewards that drift or jump over time. Here we must learn the underlying reward quickly to exploit it before it changes. Our decision policy must also understand that exploration may have a lower value because the information can not be exploited for the entirety of the game.
+\end{enumerate}
+
+The common element in these games is the importance of extracting maximum information from each event. As we demonstrate, this is achieved through custom models and decision policies based on those models.
+
+
+TODO - Place UCB to GI graph here
+
+
+
+
 \section{Real Time Bidding}
 
 An RTB campaign has a fixed budget and runs over the course of a number of months. The budget is spent bidding on \textbf{impressions}. If the bid is successful, an advert will be shown on the webpage. If the user clicks on the ad, it will be recorded. A click is considered to be \textbf{converted} in to an \textbf{acquisition} if the user then performs the campaign's target action. Typically this would be to buy a product or sign up to a mailing list.
@@ -222,6 +255,7 @@ An RTB campaign has a fixed budget and runs over the course of a number of month
 \begin{itemize}
 	\item CTR (click-through-rate) - clicks per impression
 	\item CVR (conversion rate) - acquisitions per click 
+	\item AQR (acquisition rate) - acquisitions per impression
 	\item CPA (cost per acquisition) - budget spent per acquisition
 	\item CPC (cost per click) - budget spent per click
 \end{itemize}
@@ -253,25 +287,49 @@ We have 3 vector valued random variables. The ith index represents the values fo
 
 \section{Exploratory analysis}
 
+Plot the relationship to look for any patterns. We remove sites with zero clicks, as there can be no acquisitions to relate to. 
+
 \includegraphics{CTRvsCVR}
 
-TODO - bring in relevant sections of EDA document here.
+Note the points on the far left of the plots have value q==0.  We see that click-through rates take a broad range of values, but acquisition rates tend to cluster around 0 and 1  (so much so that we wonder if the variation is just down to some measurement noise).
+
+\subsection{data cleaning}
+
+We produce a 'clean' version of the data set by removing all examples with $a_i > c_i$ or $c_i > n_i$. Though we choose not to use this dataset as we lose too many examples with acquisitions.
+
+When aggregated through the lifetime of the campaign, it's sometimes due to the fact that the same visitor can generate multiple "conversion events" (by accidentally refreshing their page)
+
+\subsection{q p dependency}
+
+The relationship is not obvious, we look at various ways to focus on important relationships that may be obscured - weighted correlation, focusing on subgroups.
+
+We consider both correlation and weighted correlation where the weight is the number of impressions. The idea here is that we want the many low impression sites not to obscure some relationship in the more important sites. Also, the lower the clicks, the higher the noise will be.
+
 
 \chapter{Binomial Data Models}
 
-If they are dependent, we consider 2 types of dependency - a cluster based dependency where the maximum likelihood value of q will jump between 2 values as p varies, and a correlation model where the ML value of q will vary smoothly as a function of p.
+We begin by exploring a variety of models for binomial data, motivated by our understanding of the RTB problem. In the next section we will explore how these models help optimise our campaign goals and inform decision policy.
 
-Danaher et al ~\cite{danaher2005bacon}, Kupper ~\cite{kupper1978use} and Lee ~\cite{ting1996properties} provide smooth correlation models between p and q.
+Our goal with these models is to help generate acquisitions by exploring the model, so we will be asking questions such as:
+\begin{itemize}
+	\item How many data points would we need to fit the model.
+	\item What does one arm tell us about another.
+	\item Does the model help avoid chasing noise.
+	\item Do clicks help make inference about acquisitions.
+\end{itemize}
 
-An exact test for beta-binomial model is non-trivial, Garren et al ~\cite{garren2001bootstrap} has an excellent review of goodness-of-fit tests for beta-binomial model. Where as Mantel et al ~\cite{mantel1987goodness} addresses our issue of varying sample sizes ($n$).
+% If they are dependent, we consider 2 types of dependency - a cluster based dependency where the maximum likelihood value of q will jump between 2 values as p varies, and a correlation model where the ML value of q will vary smoothly as a function of p.
 
-Where exact tests are not available, we will resort to LR tests and Information criterion approaches.
+% Danaher et al ~\cite{danaher2005bacon}, Kupper ~\cite{kupper1978use} and Lee ~\cite{ting1996properties} provide smooth correlation models between p and q.
+
+% An exact test for beta-binomial model is non-trivial, Garren et al ~\cite{garren2001bootstrap} has an excellent review of goodness-of-fit tests for beta-binomial model. Where as Mantel et al ~\cite{mantel1987goodness} addresses our issue of varying sample sizes ($n$).
+
+% Where exact tests are not available, we will resort to LR tests and Information criterion approaches.
 
 \section{Model definitions} 
 
-We define a number of models to fit the data with the goal of modelling acquisitions.
 
-We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We then bring in intermediate clicks, hoping these can offer more information on the likelihood of future acqusitions. We discuss under what conditions clicks provide information on acquisitions in the appendix. We consider both cluster models as well as a correlation models to describe dependency between p and q.
+We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We then bring in intermediate clicks, hoping these can offer more information on the likelihood of future acquisitions. We discuss under what conditions clicks provide information on acquisitions in the appendix. We consider both cluster models as well as a correlation models to describe dependency between p and q.
 
 \begin{description}
 	\item[Model 1 - Single Binomial]
@@ -285,7 +343,7 @@ All arms are assumed to have the same reward function. We assume a uniform Beta 
   \end{align}
 
 	\item[Model 2 - Independent Binomials]
-Here we take $\alpha, \beta$ values to be known fixed values (possibly based on previous campaigns), thereby making all $q_i$ and $p_i$ values independent of each other. There is no information to be gained about lever 1 by looking at lever 2. 
+Here we take $\alpha, \beta$ values to be known fixed values (possibly based on previous campaigns), thereby making all $q_i$ and $p_i$ values independent of each other. There is no information to be gained about lever 1 by looking at lever 2.
 
   \begin{align}
 	a_i \sim Bin(q_i,c_i) \\
@@ -294,10 +352,14 @@ Here we take $\alpha, \beta$ values to be known fixed values (possibly based on 
 	\pi(p_i) \sim Beta(\alpha_p,\beta_p) \\
   \end{align}
 
-	\item[Model 3 - Beta-binomial]
-Useful if data not completely independent but is over dispersed for a binomial model. Here we assume a hierarchical model where the conversion rate for each arm is sampled from a Beta distribution with common $\alpha$, $\beta$ parameters across all arms. In a sense, this model lies somewhere between model 1 and model 2, in that data about lever 1 gives us some information about lever 2 via inference of $\alpha$, $\beta$ parameters. 
+Within this model, we also have the option to use regressors such as campaign type to offer different $\alpha, \beta$ values to different classes of arm without changing the posterior update procedure.
 
-Since acquisitions are rare events, we try to gain more information about a lever be modelling the click-through-rate separately from the conversions. 
+	\item[Model 3 - Beta-binomial]
+
+
+% Useful if data not completely independent but is over dispersed for a binomial model. Here we assume a hierarchical model where the conversion rate for each arm is sampled from a Beta distribution with common $\alpha$, $\beta$ parameters across all arms. 
+
+We now take M2 and assume that $\alpha, \beta$ values are random variables, rather than being fixed. In a sense, this model lies somewhere between model 1 and model 2, in that data about lever 1 gives us some information about lever 2 via inference of shared $\alpha$, $\beta$ parameters. 
 
   \begin{align}
 	a_i \sim Bin(q_i,c_i) \\
@@ -307,17 +369,19 @@ Since acquisitions are rare events, we try to gain more information about a leve
 	\pi(\alpha_q) = \pi(\beta_q) = \pi(\alpha_p) = \pi(\beta_p) = 1
   \end{align}
 
-When p and q are independent of each other, $a_i$ has distribution $Bin(p_iq_i,n)$ and $p_iq_i$ has distribution $Beta(a_i,n_i - a_i)$ (see 'Do Clicks Matter' for proof).  The intuition here is that clicks are not informative - as much as they increase our belief in click through rate, they decrease our belief in the acquisition rate.
+The benefit over model 2 is that we can update shared $\alpha, \beta$ values online, and therefore require less sample data to fit the correct AQR should our M2 priors be incorrect. The cost is that the posterior distribution of $p_i$ and $q_i$ no longer has an analytic form and we must use Monte Carlo methods to sample.
 
-% TODO - SINCE YOU LATER TREAT EACH ARM INDEPENDENTLY, BE CLEAR WHETHER YOU ARE USING MODEL 2 OR MODEL 3.
+As with M2, we have the option to use regressors to offer different $\alpha, \beta$ variables to different classes of arm.
+
+% When p and q are independent of each other, $a_i$ has distribution $Bin(p_iq_i,n)$ and $p_iq_i$ has distribution $Beta(a_i,n_i - a_i)$ (see 'Do Clicks Matter' for proof).  The intuition here is that clicks are not informative - as much as they increase our belief in click through rate, they decrease our belief in the acquisition rate.
 
 	\item[Model 5 - 2 cluster Binomial]
 
-Useful for comparison against model 6.
+Useful for comparison against model 6 in correlation tests.
 
 	\item[Model 6 - 2 cluster Beta-binomial]
 
-Model 4 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a beta-binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
+Model 3 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a beta-binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
  
  \begin{align}
 	a_i \sim Bin(q_i,c_i) \\
@@ -368,17 +432,18 @@ To generate the data for each model, we first sampled $n$ from the Advance media
 
 \subsection{ Correlation measures}
 
+A dependency between CTR and CVR would be a big benefit in predicting AQR since clicks are more common than acquisitions. We define a few measures of correlation below. We apply these to the model generated datasets to see if they help distinguish the relationships present in m5 and m6 from the independent models m1 and m3. We also apply the measures to the Advance dataset for comparison with the 4 models.
+
 \begin{description}
 	\item[Cor] Pearson correlation coefficient between CVR ($a/c$) and CTR ($c/n$).
-	\item[IWC] Impression weighted correlation - a Pearson correlation coefficient weighted by the number of impressions ($n$). This measure is intended to reduce some of the noise coming from the many sites with few impressions.
-	\item[logIWCc] Impression weighted correlation between log(CVR) and log(CTR).
+	\item[IWC] Impression weighted correlation - a Pearson correlation coefficient weighted by the number of impressions ($n$). This measure is intended to reduce some of the noise coming from the many sites with few impressions. Possible values range from 0 to 1.
+	\item[logIWCc] Impression weighted correlation between log(CVR) and log(CTR).Possible values range from 0 to 1.
 	\item[RankCor] Spearman's rank correlation between CVR and CTR.
 	\item[glmcoef] We fit a logistic regression model as another way to measure Pearson correlation with reduced weight from small sample data points. glmcoef is the coefficient of CTR in this model:
 	$(a,c) \sim CTR$ 
 	\item[glmsignif] The significance level associated with glmcoef.
 \end{description}
 
-% TODO - original doc used to create results table?
 
 \subsection{Goodness of fit tests}
 
@@ -412,19 +477,21 @@ Obviously we could keep testing for additional clusters. A more general approach
 \section{Results}
 \subsection{Correlation measures}
 
+% Created by running Results.R
+
 % latex table generated in R 3.0.2 by xtable 1.7-3 package
-% Wed Jul 23 18:50:50 2014
+% Wed Sep 17 21:40:26 2014
 \begin{table}[ht]
 \centering
 \begin{tabular}{rlrrrrrrrr}
   \hline
- & g & Cor & IWC & logIWCc & RankCor & items & imps & glmcoef & glmsignif \\ 
+ & Dataset & Cor & IWC & logIWCc & RankCor & items & imps & glmcoef & glmsignif \\ 
   \hline
-1 & m1 & -0.03 & -0.00 & -0.01 & 0.01 & 1681 & 12946112 & 0.12 & 0.00 \\ 
-  2 & m\_1023111 & -0.07 & 0.03 & 0.10 & 0.20 & 191 & 23228621 & -0.03 & 0.19 \\ 
-  3 & m3 & -0.07 & -0.02 & -0.13 & -0.09 & 364 & 13079687 & -0.10 & 0.01 \\ 
-  4 & m5 & 0.14 & 0.05 & 0.37 & 0.27 & 324 & 12815129 & 0.76 & 0.00 \\ 
-  5 & m6 & 0.03 & 0.04 & 0.23 & 0.05 & 319 & 12743695 & 0.22 & 0.00 \\ 
+  1 & Advance & -0.07 & 0.03 & 0.10 & 0.20 & 191 & 23228621 & -0.04 & 5.2E-02 \\ 
+  2 & m1 & -0.00 & -0.01 & -0.03 & 0.02 & 1573 & 13231538 & 0.12 & 6.3E-04 \\ 
+  3 & m3 & 0.05 & -0.00 & -0.05 & 0.05 & 345 & 13791746 & -0.02 & 6.7E-01 \\ 
+  4 & m5 & -0.12 & 0.04 & 0.37 & 0.17 & 337 & 12789708 & 0.66 & 1.1E-43 \\ 
+  5 & m6 & -0.03 & 0.04 & 0.25 & 0.02 & 324 & 13738487 & 0.29 & 3.9E-16 \\ 
    \hline
 \end{tabular}
 \end{table}
@@ -439,10 +506,10 @@ TODO - cluster test fails to identify model 5 and vgam library has problems fitt
 \centering
 \begin{tabular}{rlrrrl}
   \hline
- & g & test1 & test2 & test3 & test4 \\ 
+ & Dataset & test1 & test2 & test3 & test4 \\ 
   \hline
-1 & m1 & 1.00 & 1.00 & 1.00 & Error \\ 
-  2 & m\_1023111 & 0.00 & 0.00 & 1.00 & Error \\ 
+  1 & Advance & 0.00 & 0.00 & 1.00 & Error \\ 
+  2 & m1 & 1.00 & 1.00 & 1.00 & Error \\ 
   3 & m3 & 0.00 & 0.00 & 1.00 & Error \\ 
   4 & m5 & 0.00 & 0.00 & 1.00 & Error \\ 
   5 & m6 & 0.00 & 0.00 & 0.00 & 0 \\ 
@@ -451,6 +518,11 @@ TODO - cluster test fails to identify model 5 and vgam library has problems fitt
 \end{table}
 
 \section{Summary}
+
+We see that the \textbf{logIWCc} is the best performing correlation measure, with a strong response to the two dependency models, and weak response to m1 and m3. Rank correlation seems to identify the dependency in m5, but miss m6 where the clusters are less sharply peaked (see data plots). Logistic regression clearly identifies the correlation present in m5 and m6, though also suggests m1 has a significant dependency, which it should not. This would need further investigation were we to use this measure.
+
+What this means for the Advance data is inconclusive, though rank correlation suggests there is a dependency, logIWCc is weaker and logistic regression even suggests a slight negative correlation.
+
 
 TODO - what learned from results.
 
