@@ -25,15 +25,25 @@ p6 <- adtk.plot(dm6,"Model 6 \n s1p=c(5,5),s2p=c(10000,100000),\n s1q=c(8,2),s2q
 # Correlation tests
 results_corr <- adtk.corr(dmall)
 
-# Diagnostic tests
+# Diagnostic testsk
 results_diag <- ddply(dmall[dmall$c>0,],~g,summarize,
-      test1_BinomGoF=adtk.test1(k=a,n=c),         # Binom
-      test2_BinomVsBetaBinom=adtk.test2(k=a,n=c), # BetaBinom
-      test3_2ClustBinom=adtk.test3(k=a,n=c),      # 2 Cluster Binom
-      test4_2ClustBetaBinom=adtk.test4(k=a,n=c)   # 2 Cluster BetaBinom
+      test1=adtk.test1(k=a,n=c,grpt=10),# Binom
+      test2=adtk.test2(k=a,n=c), # BetaBinom
+      test3_30=adtk.test3(k=a,n=c,q=.3),
+      test3_45=adtk.test3(k=a,n=c,q=.45),         # 2 Cluster Binom
+      test3_60=adtk.test3(k=a,n=c,q=.6)           # 2 Cluster Binom
+      #,test4_2ClustBetaBinom=adtk.test4(k=a,n=c) # 2 Cluster BetaBinom
       )
 
-# Bayesian style posterior checks
+# Residual plots:
+grp <- ifelse(n > grpt, 1:length(n), rep(-1, length(n)) )
+df <- data.frame(grp,k,n)
+D <- ddply(df, ~grp, summarize, k=sum(k), n=sum(n) )
+p <- sum(k)/sum(n) # ML estimation of rate
+r  <- (D$k - D$n*p)/(D$k*p*(1-p))
+plot(sort(r),type='l',ylim=c(-2.5,2.5))
+par(new=TRUE)
+plot(qnorm(p=(1:159)/160,mean=0,sd=1),type='l',ylim=c(-2.5,2.5))
 
 # Print results
 xtable(results_corr)

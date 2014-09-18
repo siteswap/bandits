@@ -126,13 +126,13 @@ adtk.test2 <- function(k,n,method="vglm"){
 ##############
 # test 3 - LR test 1 binom cluster vs 2 binom clusters.
 ##############
-adtk.test3 <- function(k,n){
+adtk.test3 <- function(k,n,q=.5){
 
   rate <- k/n
   df <- data.frame(k,n)
   
   # Assume median values for cutoff
-  t <- median(rate[rate>0])
+  t <- quantile(x=sort(rate[rate>0]),probs=q,names=FALSE)
   df$cluster <- (rate>t)*1
   
   # Single cluster
@@ -163,7 +163,7 @@ adtk.test4 <- function(k,n){
   m1 <- vglm(cbind(k,n-k)~cluster,betabinomial, data=df)
   
   deviance <- -2*logLik(m0)[1] + 2*logLik(m1)[1]
-  1 - pchisq(q=deviance,df=4-2)
+  pchisq(q=deviance,df=4-2)
   }, error = function(err) {
     "Error"
   })
@@ -222,5 +222,3 @@ library(ggplot2)
 # # Model 3 - something wrong.
 # gm2c.test(gm2c(train),test)
 # 
-
-

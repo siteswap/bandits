@@ -169,16 +169,25 @@ otherwise stated.\\
 
 \begin{abstract}
 
-Our work formulates the realtime bidding problem as a multi-armed bandit. In particular the work focuses on the relationships between dependent binomial variables, with the ability to model a K-stage binomial process with near optimal decision rules.
+Our work formulates the Real Time Bidding problem as a multi-armed bandit.
+
+We review current practises and argue that they are limited in their approach. 
+
+We then provide a template for a more a principled approach where the domain is first modelled and then decision policies derived from this model. We demonstrate how significant performance improvements are possible and how the approach may be adapted to new scenarios.
+ 
+In particular we develop a K-stage binomial model beating standard click-through-rate optimisation. We also draw attention to Thompson Sampling and Gittins Indices as techniques well suited to make use of custom binomial models.
 
 \end{abstract}
 
 \newpage
 \chapter*{Acknowledgements}
-Thank you supervisor/friends/family/pet.
-\begin{myquote}
-Include an acknowledgement.
-\end{myquote}
+
+I would like to express my appreciation to my supervisor, Dr Anagnostopoulos for his great generousity with his time, constructive feedback, enthusiatic guidance and being a pleasure to work with.
+
+I would also like to thank Advance media for the exposure to the many practical dimensions of running online campaigns, as well as providing RTB campaign data. 
+
+Finally, I wish to thank my wife for her incredible support throughout the project as well as her dedication to our four month old restless bandit, Daisy.
+
 \newpage
 
 % Automatically create a table of contents
@@ -197,27 +206,36 @@ Include an acknowledgement.
 %\addcontentsline{toc}{chapter}{\listtablename}
 %\newpage
 
-% TODO
-% Bring in more of earlier EDA doc.
-% Tie sections 3 and 4 together. Not made it clear which model chosen, reasons.
-% Reformat graphs so titles are clear.
-% Summarize section 3 results, fix error.
-% Discuss how/if decision rules could be applied to the other models.
-% Describe GI algorithm implementation and scaling in more detail.
-% General reviewing.
-
-% Last technical element:
-% Extend with a bidding stage, even if very simplified problem
-
 \chapter{Introduction}
 
-Our research seeks to formulate the real time bidding (RTB) problem as a multi-armed bandit (MAB). There are no papers addressing this directly, we therefore study RTB and MAB research separately. There are a several dimensions - estimating CTR rate for different placements, estimating acquisition rate and optimizing bid level over course of campaign.
+Our research formulates the real time bidding (RTB) problem as a multi-armed bandit (MAB). There are no papers addressing this directly, we therefore study RTB and MAB research separately. 
 
 We first review current literature on RTB modelling. Current MAB approaches will be discussed separately in section 4. Research relating to binomial model fitting is discussed in section 3.
 
-\section{Motivation}
 
-We review current approaches and argue that current practises are severely lacking. Particular short comings are:
+\section{Real Time Bidding}
+
+An RTB campaign has a fixed budget and runs over the course of a number of months. The budget is spent bidding for \textbf{impressions}. If the bid is successful, an advert will be shown on the webpage. If the user clicks on the ad, it will be recorded. A click is considered to be \textbf{converted} in to an \textbf{acquisition} if the user then performs the campaign's target action. Typically this would be to buy a product or sign up to a mailing list.
+
+\begin{itemize}
+	\item CTR (click-through-rate) - clicks per impression
+	\item CVR (conversion rate) - acquisitions per click 
+	\item AQR (acquisition rate) - acquisitions per impression
+	\item CPA (cost per acquisition) - budget spent per acquisition
+	\item CPC (cost per click) - budget spent per click
+\end{itemize}
+
+There are a several dimensions to the problem - estimating CTR rate for different placements, estimating acquisition rate and optimizing bid level over course of campaign.
+
+Richardson et al. ~\cite{Richardson:2007:PCE:1242572.1242643} discuss the benefits and limitations of a priori CTR prediction. Chen et al ~\cite{Chen:2011:RBA:2020408.2020604} and Ghosh et al. (Adaptive Bidding) ~\cite{Ghosh:2009:ABD:1526709.1526744} develop algorithms which optimize bid levels online. While Chen et al ~\cite{Chen:2011:RBA:2020408.2020604} focus on dynamic bid adjustment strategies to optimally meet campaign constraints, Ghosh et al. ~\cite{raey} look to 'learn' the bid distribution acknowledging the exploration-exploitation tradeoff, though not explicitly formulating as a MAB problem.
+
+Li et al. ~\cite{Li:2010:CAP:1772690.1772758} explore the contextual multiarmed bandit problem as applied to news article recommendation, while Yue and Pandey TODO cite use knowledge about the item and the arm inter-relatedness to speed convergence of the bandit arms.
+
+\section{Our contribution}
+
+No papers were found formulating the RTB as a MAB explicitly. Also, many practical aspects of the RTB problem have been overlooked - such as predicting acquisition rate, optimal explore-exploit tradeoffs for ad placement given time/budget limited campaigns. There also appears room to improve the combination of online and offline optimisation by treating our offline optimization as a Bayesian prior to our online optimization.
+
+We also believe that much of the MAB applications literature has the following short comings:
 
 \begin{enumerate}
 	\item Development of 'one-size-fits-all decision algorithms' and heuristics, without principled ways to customise tools to specific problems.
@@ -228,9 +246,8 @@ We provide a template for a more a principled approach and demonstrate very subs
 
 \begin{enumerate}
 	\item A well motivated custom model.
-	\item A decision policy based on that model over standard exploration algorithms.
+	\item A decision policy based on that model over generic exploration algorithms.
 \end{enumerate}
-
 
 There are a range of games where a generic model and asymptotic performance policies are inappropriate:
 
@@ -240,31 +257,15 @@ There are a range of games where a generic model and asymptotic performance poli
 	\item Non-stationary rewards (restless bandits), have rewards that drift or jump over time. Here we must learn the underlying reward quickly to exploit it before it changes. Our decision policy must also understand that exploration may have a lower value because the information can not be exploited for the entirety of the game.
 \end{enumerate}
 
-The common element in these games is the importance of extracting maximum information from each event. As we demonstrate, this is achieved through custom models and decision policies based on those models.
+The common element in these games is the importance of extracting maximum information from each event. Figure 1.1 demonstrates the kind of performance improvement can be achieve through custom models and a model based decision policy.
 
+\begin{figure}[p]
+    \centering
+    \includegraphics[scale=0.7]{GIvsUCB1.pdf}
+    \caption{Mean regret of Gittins index strategy vs UCB1}
+    \label{fig:GIvsUCB1}
+\end{figure}
 
-TODO - Place UCB to GI graph here
-
-
-
-
-\section{Real Time Bidding}
-
-An RTB campaign has a fixed budget and runs over the course of a number of months. The budget is spent bidding on \textbf{impressions}. If the bid is successful, an advert will be shown on the webpage. If the user clicks on the ad, it will be recorded. A click is considered to be \textbf{converted} in to an \textbf{acquisition} if the user then performs the campaign's target action. Typically this would be to buy a product or sign up to a mailing list.
-
-\begin{itemize}
-	\item CTR (click-through-rate) - clicks per impression
-	\item CVR (conversion rate) - acquisitions per click 
-	\item AQR (acquisition rate) - acquisitions per impression
-	\item CPA (cost per acquisition) - budget spent per acquisition
-	\item CPC (cost per click) - budget spent per click
-\end{itemize}
-
-Richardson et al. ~\cite{Richardson:2007:PCE:1242572.1242643} discuss the benefits and limitations of a priori CTR prediction. Chen et al ~\cite{Chen:2011:RBA:2020408.2020604} and Ghosh et al. (Adaptive Bidding) ~\cite{Ghosh:2009:ABD:1526709.1526744} develop algorithms which optimize bid levels online. While Chen et al ~\cite{Chen:2011:RBA:2020408.2020604} focus on dynamic bid adjustment strategies to optimally meet campaign constraints, Ghosh et al. ~\cite{raey} look to 'learn' the bid distribution acknowledging the exploration-exploitation tradeoff, though not explicitly formulating as a MAB problem.
-
-Li et al. ~\cite{Li:2010:CAP:1772690.1772758} explore the contextual multiarmed bandit problem as applied to news article recommendation, while Yue and Pandey use knowledge about the item and the arm inter-relatedness to speed convergence of the bandit arms.
-
-No papers were found formulating the RTB as a MAB explicitly. Also, many practical aspects of the RTB problem have been overlooked - such as predicting acquisition rate, optimal explore-exploit tradeoffs for ad placement given time/budget limited campaigns. There also appears room to improve the synthesis of online and offline optimisation by applying Bayesian principles.
 
 \section{Objective}
 Our objective is to develop a model which minimizes the cost per acquisition over the course of a campaign, whilst meeting budget constraints. We propose a number of innovations:
@@ -278,7 +279,9 @@ Our objective is to develop a model which minimizes the cost per acquisition ove
 
 \chapter{RTB Data}
 
-We have 3 vector valued random variables. The ith index represents the values for site domain i for a particular lineitem. In the context on a MAB problem, each index represents a lever. The variables are defined as:
+The following data was provided by Advance media and represents a typical RTB campaign, though acquisition rates can be much lower.
+
+We have 3 vector valued random variables. The ith index represents the values for site domain (website) i for a particular lineitem (product advertised). In the context on a MAB problem, each index represents an arm. The variables are defined as:
 \begin{itemize}
 	\item \textbf{n} - number of impressions served over given time period
 	\item \textbf{c} - number of clicks on impressions over same time period 
@@ -287,23 +290,21 @@ We have 3 vector valued random variables. The ith index represents the values fo
 
 \section{Exploratory analysis}
 
-Plot the relationship to look for any patterns. We remove sites with zero clicks, as there can be no acquisitions to relate to. 
+We plot the relationship between CTR and CVR to look for any patterns. We remove sites with zero clicks, as there can be no acquisitions to relate to. 
 
 \includegraphics{CTRvsCVR}
 
-Note the points on the far left of the plots have value q==0.  We see that click-through rates take a broad range of values, but acquisition rates tend to cluster around 0 and 1  (so much so that we wonder if the variation is just down to some measurement noise).
+Note the points on the far left of the plots have value q==0.  We see that CTRs take a broad range of values and CVR has less variation. 
 
 \subsection{data cleaning}
 
-We produce a 'clean' version of the data set by removing all examples with $a_i > c_i$ or $c_i > n_i$. Though we choose not to use this dataset as we lose too many examples with acquisitions.
+When aggregated through the lifetime of the campaign we can get examples where $a>c$ due to the same visitor generating multiple "conversion events" by accidentally refreshing their page.
 
-When aggregated through the lifetime of the campaign, it's sometimes due to the fact that the same visitor can generate multiple "conversion events" (by accidentally refreshing their page)
+We produce a 'clean' version of the data set by removing all examples with $a_i > c_i$ or $c_i > n_i$. Though in our correlation analysis we choose not to use the original dataset as we lose too many examples with acquisitions.
 
-\subsection{q p dependency}
+\subsection{CTR CVR dependency}
 
-The relationship is not obvious, we look at various ways to focus on important relationships that may be obscured - weighted correlation, focusing on subgroups.
-
-We consider both correlation and weighted correlation where the weight is the number of impressions. The idea here is that we want the many low impression sites not to obscure some relationship in the more important sites. Also, the lower the clicks, the higher the noise will be.
+The relationship between CTR and CVR is not obvious, we look at various ways to focus on important relationships that may be obscured - weighted correlation, focusing on subgroups.
 
 
 \chapter{Binomial Data Models}
@@ -324,7 +325,6 @@ Our goal with these models is to help generate acquisitions by exploring the mod
 
 % An exact test for beta-binomial model is non-trivial, Garren et al ~\cite{garren2001bootstrap} has an excellent review of goodness-of-fit tests for beta-binomial model. Where as Mantel et al ~\cite{mantel1987goodness} addresses our issue of varying sample sizes ($n$).
 
-% Where exact tests are not available, we will resort to LR tests and Information criterion approaches.
 
 \section{Model definitions} 
 
@@ -348,8 +348,8 @@ Here we take $\alpha, \beta$ values to be known fixed values (possibly based on 
   \begin{align}
 	a_i \sim Bin(q_i,c_i) \\
 	c_i \sim Bin(p_i,n_i) \\
-	\pi(q_i) \sim Beta(\alpha_q,\beta_q) \\
-	\pi(p_i) \sim Beta(\alpha_p,\beta_p) \\
+	\pi(q_i) = Beta(\alpha_q,\beta_q) \\
+	\pi(p_i) = Beta(\alpha_p,\beta_p) \\
   \end{align}
 
 Within this model, we also have the option to use regressors such as campaign type to offer different $\alpha, \beta$ values to different classes of arm without changing the posterior update procedure.
@@ -377,41 +377,64 @@ As with M2, we have the option to use regressors to offer different $\alpha, \be
 
 	\item[Model 5 - 2 cluster Binomial]
 
-Useful for comparison against model 6 in correlation tests.
-
-	\item[Model 6 - 2 cluster Beta-binomial]
-
-Model 3 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a beta-binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
+Model 3 assumed that CTR and CVR are independent. Experience suggests that levers tend to perform well on both CTR and CVR or poorly on both. In other words, there tend to be 'clusters' of good and bad levers. Model 5 attempts to capture this with a binomial mixture model. We use priors to bias one cluster towards being the poor performer, this helps avoid 'index switching' complications with model fitting. 
  
  \begin{align}
-	a_i \sim Bin(q_i,c_i) \\
-	c_i \sim Bin(p_i,n_i) \\
 	k \sim Bern(h) 
 \end{align}
 	\[ 
-	q_i \sim 
+	a_i = 
   	\begin{cases}
-		Beta(\alpha_{q0},\beta_{q0}) & \quad \text{if k is 0}\\
-		Beta(\alpha_{q1},\beta_{q1}) & \quad \text{if k is 1}
+		Bin(q_0,c_i) & \quad \text{if k is 0}\\
+		Bin(q_1,c_i) & \quad \text{if k is 1}
 	\end{cases}
 	\]
 	\[
-	p_i \sim 
+	c_i = 
   	\begin{cases}
-		Beta(\alpha_{p0},\beta_{p0}) & \quad \text{if k is 0}\\
-		Beta(\alpha_{p1},\beta_{p1}) & \quad \text{if k is 1}\\
+		Bin(p_0,n_i) & \quad \text{if k is 0}\\
+		Bin(p_1,n_i) & \quad \text{if k is 1}\\
 	\end{cases}
 	\]
 
  \begin{align}
-	\pi(h) \sim Unif(0,1) \\
-	\pi(\alpha_{q0}) \sim Gamma(1,2) \\
-	\pi(\beta_{q0}) \sim Gamma(1,2) \\
-	\pi(\alpha_{p0}) \sim Gamma(1,2) \\
-	\pi(\beta_{p0}) \sim Gamma(1,2) \\
-	\pi(\alpha_{q1}) = \pi(\beta_{q1}) = \pi(\alpha_{p1}) = \pi(\beta_{p1}) = 1
+	\pi(h) = Unif(0,1) \\
+	\pi(p_0) = \pi(q_0) = Beta(1,10) \\
+	\pi(p_1) = \pi(q_1) = Beta(10,1) \\
 \end{align}
 
+%
+%	\item[Model 6 - 2 cluster Beta-binomial]
+%
+% \begin{align}
+%	a_i \sim Bin(q_i,c_i) \\
+%	c_i \sim Bin(p_i,n_i) \\
+%	k \sim Bern(h) 
+%\end{align}
+%	\[ 
+%	q_i \sim 
+%  	\begin{cases}
+%		Beta(\alpha_{q0},\beta_{q0}) & \quad \text{if k is 0}\\
+%		Beta(\alpha_{q1},\beta_{q1}) & \quad \text{if k is 1}
+%	\end{cases}
+%	\]
+%	\[
+%	p_i \sim 
+%  	\begin{cases}
+%		Beta(\alpha_{p0},\beta_{p0}) & \quad \text{if k is 0}\\
+%		Beta(\alpha_{p1},\beta_{p1}) & \quad \text{if k is 1}\\
+%	\end{cases}
+%	\]
+%
+% \begin{align}
+%	\pi(h) \sim Unif(0,1) \\
+%	\pi(\alpha_{q0}) \sim Gamma(1,2) \\
+%	\pi(\beta_{q0}) \sim Gamma(1,2) \\
+%	\pi(\alpha_{p0}) \sim Gamma(1,2) \\
+%	\pi(\beta_{p0}) \sim Gamma(1,2) \\
+%	\pi(\alpha_{q1}) = \pi(\beta_{q1}) = \pi(\alpha_{p1}) = \pi(\beta_{p1}) = 1
+%\end{align}
+%
 % TODO
 % \includegraphics{GraphMod.jpg}
 
@@ -439,8 +462,8 @@ A dependency between CTR and CVR would be a big benefit in predicting AQR since 
 	\item[IWC] Impression weighted correlation - a Pearson correlation coefficient weighted by the number of impressions ($n$). This measure is intended to reduce some of the noise coming from the many sites with few impressions. Possible values range from 0 to 1.
 	\item[logIWCc] Impression weighted correlation between log(CVR) and log(CTR).Possible values range from 0 to 1.
 	\item[RankCor] Spearman's rank correlation between CVR and CTR.
-	\item[glmcoef] We fit a logistic regression model as another way to measure Pearson correlation with reduced weight from small sample data points. glmcoef is the coefficient of CTR in this model:
-	$(a,c) \sim CTR$ 
+	\item[glmcoef] We fit a binomial regression model as another way to measure Pearson correlation with reduced weight from small sample data points. glmcoef is the coefficient of CTR in this model:
+	$(a,c) \sim log(CTR)$ 
 	\item[glmsignif] The significance level associated with glmcoef.
 \end{description}
 
@@ -452,26 +475,62 @@ We take the approach of starting with a simple model and run further tests to de
 Where possible we prefer tests with strong theoretical backing, e.g. LR. As model complexity rises it becomes harder to rely on these. We use information criteria and posterior validation.
 
 \begin{description}
-	\item[test 1] A frequentist style goodness of fit test designed to assess whether data can be well explained with simple binomial model 1. We use the binomial approximation to the Normal and perform pearson chisq on the residuals. This only holds for large n, so we group the small n values to test whether (together) they share the same mean.
+	\item[test 1] 
 
-Benefits are that we can have a composite alternative hypothesis, downside is the approximation used. Could be improved by Yates' corerction. 
-% TODO - approximation fails for p as rate is very small.
+We assume the Normal approximation to the binomial and perform a chi squared test on the residuals, $r_i$ defined below:
+
+\begin{align}
+	\hat{q} = \frac{ \sum_{i} a_i }{ \sum_{i} n_i } \\
+	r_i = \frac{ a_i - n_i \hat{q} }{ a_i \hat{q} (1 - \hat{q}) }
+\end{align}
+
+Since the Normal approximation only holds for large c, so we group all examples with the values of c less than 10.
 
 
-	\item[test 2] Assuming we reject model 1, we try LR test to see if data is better modelled using beta-binomial. Testing null hypothesis against all others is difficult. LR test has the benefit of being 'most powerful' for comparing 2 point hypotheses, so is a good choice assuming we are happy using ML point hypotheses. If we were willing to specify priors on parameters, we could turn this in to a Bayes factor test.
+%
+%A frequentist style goodness of fit test designed to assess whether data can be well explained with simple binomial model 1. We use the binomial approximation to the Normal and perform pearson chisq on the residuals. This only holds for large n, so we group the small n values to test whether (together) they share the same mean.
+%
+%Benefits are that we can have a composite alternative hypothesis, downside is the approximation used. Could be improved by Yates' corerction. 
+%% TODO - approximation fails for p as rate is very small.
 
+
+	\item[test 2] 
+
+We construct a likelihood ratio test statistic $D$ comparing null hypothesis Model 1, with the alternate hypothesis Model 3. We use the VGAM package to find ML estimates for m3 and validate this with the same model constructed with RStan. 
+
+\begin{align}
+	D = -2 \max_{q} \sum_i \log( \operatorname{Bin}(a_i;c_i,q) ) +
+	2 \max_{\alpha,\beta} \sum_i \log( \operatorname{BetaBin}(a_i;c_i,\alpha,\beta) ) 
+\end{align}
+
+Our argument for using this test here is that:
+\begin{align}
+	 \operatorname{BetaBin}(a;c,pn,(1-p)n) \overset{d}{\to} \operatorname{Bin}(a;c,p) \quad \operatorname{as} \quad n \to \infty
+\end{align}
+
+%Assuming we reject model 1, we try LR test to see if data is better modelled using beta-binomial. Testing null hypothesis against all others is difficult. LR test has the benefit of being 'most powerful' for comparing 2 point hypotheses, so is a good choice assuming we are happy using ML point hypotheses. If we were willing to specify priors on parameters, we could turn this in to a Bayes factor test.
+%
 % TODO - compare ratio value to alpha, or do chisq on deviances?
 
-We use both VGAM and Stan package to get ML estimates for beta-binomial.
 
-	\item[test 3] LR test Model 1 vs Model 5 - 1 cluster binomial vs 2 cluster binomial. In fitting the 2 cluster model, we visually split the data and fit 2 separate binomials, so the test is only approximate. 
+	\item[test 3] We create 2 hypothetical groups split based on the median realized acquisition rate. We create a binary variable $X$ for membership of this group. We then use binomial regression to fit 1 and 2 cluster models:
 
+\begin{align}
+	M_0 := (a,c) \sim 1 \\
+	M_a := (a,c) \sim X + 1
+\end{align}
 
-	\item[test 4] Assuming we reject the null in test 2, due to over dispersion, we check if can extend this to 2 cluster model with another LR test. In fitting the 2 cluster model, we visually split the data and fit 2 separate beta-binomials, so the test is only approximate. 
+We then construct a likelihood ratio test comparing $M_0$ with $M_a$. 
 
-Obviously we could keep testing for additional clusters. A more general approach could be to define prior penalizing large number of clusters and use VB or Gibbs to find posterior.
-
-	\item[test 5] Use AIC and BIC for comparison between Model 6 and Model 7 as these models are not nested.
+We choose this test because it is easy to set up and may indicate clustering. A more accurate test would use EM to assign data points to clusters.
+%
+%LR test Model 1 vs Model 5 - 1 cluster binomial vs 2 cluster binomial. In fitting the 2 cluster model, we visually split the data and fit 2 separate binomials, so the test is only approximate. 
+%
+%
+%	\item[test 4] Assuming we reject the null in test 2, due to over dispersion, we check if can extend this to 2 cluster model with another LR test. In fitting the 2 cluster model, we visually split the data and fit 2 separate beta-binomials, so the test is only approximate. 
+%
+%Obviously we could keep testing for additional clusters. A more general approach could be to define prior penalizing large number of clusters and use VB or Gibbs to find posterior.
+%
 \end{description}
 
 \section{Results}
@@ -496,35 +555,45 @@ Obviously we could keep testing for additional clusters. A more general approach
 \end{tabular}
 \end{table}
 
-
 \subsection{Goodness of fit}
 
-TODO - cluster test fails to identify model 5 and vgam library has problems fitting non betabinom cluster data.
+Here we present p values for the 3 tests defined earlier.
 % latex table generated in R 3.0.2 by xtable 1.7-3 package
-% Wed Jul 23 18:51:42 2014
+%% Thu Sep 18 14:42:56 2014
 \begin{table}[ht]
 \centering
-\begin{tabular}{rlrrrl}
+\begin{tabular}{rlrrrrr}
   \hline
- & Dataset & test1 & test2 & test3 & test4 \\ 
+ & Dataset & test1 & test2 & test3\_30 & test3\_45 & test3\_60 \\ 
   \hline
-  1 & Advance & 0.00 & 0.00 & 1.00 & Error \\ 
-  2 & m1 & 1.00 & 1.00 & 1.00 & Error \\ 
-  3 & m3 & 0.00 & 0.00 & 1.00 & Error \\ 
-  4 & m5 & 0.00 & 0.00 & 1.00 & Error \\ 
-  5 & m6 & 0.00 & 0.00 & 0.00 & 0 \\ 
+  1 & Advance & 0.00 & 0.00 & 1.00 & 1.00 & 1.00 \\ 
+  2 & m1 & 1.00 & 1.00 & 0.00 & 1.00 & 1.00 \\ 
+  3 & m3 & 0.00 & 0.00 & 0.00 & 1.00 & 1.00 \\ 
+  4 & m5 & 0.00 & 0.00 & 0.00 & 0.00 & 1.00 \\ 
+  5 & m6 & 0.00 & 0.00 & 0.00 & 0.00 & 1.00 \\ 
    \hline
 \end{tabular}
 \end{table}
 
+%  \hline
+%  1 & Advance & 0.00 & 0.00 & 1.00 & Error \\ 
+%  2 & m1 & 1.00 & 1.00 & 1.00 & Error \\ 
+%  3 & m3 & 0.00 & 0.00 & 1.00 & Error \\ 
+%  4 & m5 & 0.00 & 0.00 & 1.00 & Error \\ 
+%  5 & m6 & 0.00 & 0.00 & 0.00 & 0 \\ 
+%   \hline
+
 \section{Summary}
 
-We see that the \textbf{logIWCc} is the best performing correlation measure, with a strong response to the two dependency models, and weak response to m1 and m3. Rank correlation seems to identify the dependency in m5, but miss m6 where the clusters are less sharply peaked (see data plots). Logistic regression clearly identifies the correlation present in m5 and m6, though also suggests m1 has a significant dependency, which it should not. This would need further investigation were we to use this measure.
+We see that the logIWCc is the best performing correlation measure, with a strong response to the two dependency models, and weak response to m1 and m3. Rank correlation seems to identify the dependency in m5, but miss m6 where the clusters are less sharply peaked (see data plots). Logistic regression clearly identifies the correlation present in m5 and m6, though also suggests m1 has a significant dependency, which it should not. This would need further investigation were we to use this measure.
 
-What this means for the Advance data is inconclusive, though rank correlation suggests there is a dependency, logIWCc is weaker and logistic regression even suggests a slight negative correlation.
+What this means for the Advance data is inconclusive, though rank correlation suggests there is a dependency, logIWCc is weaker and binomial regression even suggests a slight negative correlation.
 
+Test 1 suggests we should reject the binomial model for all but m1, as we would expect.
+Test 2 says we should prefer the beta binomial model for all but m1, as we would expect. 
+Test 3 turns out to be a poor tool. Although with a value of .45 we get sensible results, it is very sensitive to our choice of boundary to split the clusters.
 
-TODO - what learned from results.
+% TODO Test 4 can't fit the data.
 
 %\begin{itemize}
 %	\item Need to use log values of p.
@@ -789,11 +858,50 @@ The bayes-optimal solutions remain attractive. Although the Bellman equation giv
 
 \section{Applicability to other models}
 
-TODO - discuss how above MAB strategies can be applied to mixture models (m5 and m6) and correlation / copula models (m7).
+Our decision policy experiments assumed m2 as the underlying model, but our intention here is to provide a template for many different models. 
+
+Both m3 and m5 require more involved sampling techniques to generate samples from their posterior distributions. But Thompson Sampling only requires a single sample point from each arm per round, so for most applications this is perfectly feasible.
+
+We may also possible to apply the GI solution to m3 and m5 models, though taking expectations can only be achieved with Monte Carlo methods, so will be slower.
 
 \section{Contextual bandits}
 
-We hope that the models can be further expanded to include a more complex hierarchy, for example, campaign-site-placement. Or could dependencies on for example, fixed effect regressors for creative or user category.
+Factorial bandits are way to bring in regressor information. Here, the rate parameter $p$ is predicted by a probit regression model. The coefficient vector $\mathbf{\theta}$ of the model typically has a multivariate normal prior, which is then updated in a Bayesian fasion. As with our hierarchical models m3 and m5, the posterior does not have an analytic form ~\cite{scott2010modern} but there exist reasonably efficient sampling algorithms for a Thompson Sampling decision policy.
+
+\begin{align}
+	c_i \sim Bin(p_i,n_i) \\
+	p_i = \Phi(\mathbf{\theta}_i^T \mathbf{x}) \\
+	\pi(\mathbf{\theta}_i) = \mathcal{N}(\mu,\Sigma)
+\end{align}
+
+Factorial bandits offers a way to bring in important information such as time of day, site and campaign attributes without creating (exponentially many) new arms for every combination. In that sense, it helps us generalize. The same idea can be applied to extend our 2 stage, or even multi-stage model:
+
+\begin{align}
+	a_i \sim Bin(q_i,n_i) \\
+	c_i \sim Bin(p_i,n_i) \\
+	q_i = \Phi(\mathbf{\theta}_i^T \mathbf{x}) \\
+	p_i = \Phi(\mathbf{\phi}_i^T \mathbf{x}) \\
+	\pi(\mathbf{\theta}_i) = \mathcal{N}(\mu_q,\Sigma_q) \\
+	\pi(\mathbf{\phi}_i) = \mathcal{N}(\mu_p,\Sigma_p) 
+\end{align}
+
+With m3, $\mu$ and $\Sigma$ would be variables shared across arms and updated online. With m2 they would be updated independently.
+
+As with our earlier models, a well motivated, informative prior on $q_i$ is likely to provide significant performance improvement.
+
+The popular 'contextual bandits' is the name given to factorial bandits, when the features are website viewer information. For example, rather than a site having a single acquisition rate, contextual bandits lets us learn a different reward distribution for different types of user.
+
+\section{Restless bandits}
+
+Restless or non-stationary bandits extend the problem by letting our reward $p$ be a stochastc process, which may jump or drift over time. In effect this introduces an additional filtering problem, though it is rarely explicitly addressed as such.
+
+This can be an important consideration in RTB problems, for example we may see the CTR of a site deteriorate as a campaign becomes over exposed to the site's users. This would have a very detrimental effect on the algorithm's effectiveness.
+
+One Bayesian approach to the problem Dynamic Thompson Sampling ~\cite{gupta2011thompson}. This in effect is applying an exponentially weighted moving average filter. 
+
+Consistent with the rest of our work, we suggest there are performance improvements to be made from modelling the specific nature of the non-stationarity, then developing a decision policy based on the model. Although not in general optimal for the restless bandit problem, index strategies can still perform very well. 
+
+We note that although the model is complex, the number of possible outcomes is still the same and so the Gittins index solution has the same order of cost (see Appendix).
 
 \section{Scaling up}
 
