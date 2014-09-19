@@ -566,6 +566,7 @@ We then construct a likelihood ratio test comparing $M_0$ with $M_a$. We choose 
   5 & m6 & -0.03 & 0.04 & 0.25 & 0.02 & 324 & 13738487 & 0.29 & 3.9E-16 \\ 
    \hline
 \end{tabular}
+\caption{Correlation measure results}
 \end{table}
 
 \subsection{Goodness of fit}
@@ -586,6 +587,7 @@ Here we present p values for the 3 tests defined earlier.
   5 & m6 & 0.00 & 0.00 & 0.00 & 0.00 & 1.00 \\ 
    \hline
 \end{tabular}
+\caption{Goodness of fit results}
 \end{table}
 
 %  \hline
@@ -692,7 +694,7 @@ PAC learning approaches look to limit the number of sub-optimal decisions. But t
 
 For given priors, it is possible to define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown rewards. We can turn this in to a many state MDP with known rewards by representing each possible posterior value as a new state. Each transition probability is given it's expected value based on the current posterior. This idea is present in early discussions of sequential binomial decision problems ~\cite{chernoff1965bayes} but has more recently been labelled 'Bayes adaptive reinforcement learning' in the machine learning literature ~\cite{duff2002optimal}. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation. Appendix A.2 provides an example of how this is calculated.
 
-Figure 4.1 below provides a demonstration of this policy. In each frame, we see which arm is optimal as a function of rounds remaining. In the first frame, the high expectation arm (coloured blue with prior $Beta(7,5)$) is preferred for short campaigns. The preference then changes toward the mid variance, mid expectation arm (coloured redwith prior $Beta(4,3)$). And for games with 4 rounds or more, the high variance arm (black) offers the highest value. The 6 panes show one possible scenario play out as arms are chosen and posteriors are updated.
+Figure 4.1 below provides a demonstration of this policy. In each frame, we see which arm is optimal as a function of rounds remaining. In the first frame, the high expectation arm (coloured blue with prior $Beta(7,5)$) is preferred for short campaigns. The preference then changes toward the mid variance, mid expectation arm (coloured red with prior $Beta(4,3)$). And for games with 4 rounds or more, the high variance arm (black) offers the highest value. The 6 panes show one possible scenario play out as arms are chosen and posteriors are updated.
 
 
 \begin{figure}[H]
@@ -1352,13 +1354,13 @@ gm2c <- function(d){
 \begin{figure}[H]
     \centering
     \includegraphics[scale=0.7]{AdvFit.pdf}
-    \caption{Advance data RStan report}
+    \caption{Advance data RStan M5 fit plot}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[scale=0.7]{M5Fit.pdf}
-    \caption{Model 5 RStan report}
+    \caption{Model 5 RStan M5 fit plot}
 \end{figure}
 
 \end{document}
