@@ -1150,6 +1150,53 @@ The optimal policy under this MDP is to greedily choose action with maximum valu
 
 \section{Gittins index calculation}
 
-We can adapt the above MDP to calculate a Gittins index for arm 1. To do this, we replace arm 2 with a fixed (but unknown) payoff arm. We may then calculate the maximum possible payoff of arm 2 such that we both arms have equal value in the first round. This can be achieved by backwards induction.
+We can adapt the above MDP to calculate a Gittins index for arm 1. To do this, we replace arm 2 with an arm with fixed payoff $\lambda$. We may then calculate the maximum possible payoff of arm 2 such that both arms have equal value in the first round. The most efficient method to do this is the 'calibration method' whereby a matrix of 'candidate' $\lambda$ values is used to calculate the index to arbitrary precision.
+
+To adapt the calibration algorithm described in Nino-Mora ~\cite{nino2011computing} to our 2 stage binomial model, we need to develop a schema for constructing transition matrices for information states between rounds.
+
+Each information state can be represented as a tuple $(c,a)$. If we sort the information states by clicks followed by acquisitions, we can assign each state to a contiguous range of indices, such that:
+
+\begin{align}
+	\operatorname{index}(c,a) = 1 + \sum_j^c + a = 1 + a + \frac{c + c^2}{2} 
+\end{align}
+
+At each round $t$, we construct an $i$ by $j$ transition matrix $P_t$. For each information state $i$, we populate the transition probabilities for the 3 outcomes:
+
+No clicks keeps same index:
+\begin{align}
+	&P(i,i) = 1 - E[p|c,a]
+\end{align}
+
+Click but no acquisition advances index by c+1:
+\begin{align}
+	&P(i,i+c+1) = (1 - E[q|c,a])E[p|c,a] 
+\end{align}
+
+Click and acquisition advances index by c+1+1:
+\begin{align}
+	&P(i,i+c+2) = E[q|c,a]E[p|c,a] 
+\end{align}
+
+At this point we have not specified the nature of the model. In fact, the algorithm is identical for all 2 stage binomial models. The only thing we need from the model are the conditional expectations for the information state transitions. Like Thompson Sampling, this orthogonality is very attractive from an implementation point of view.
+
+For the M2 model used in our experiments, the expectations are:
+\begin{align}
+	E[p|c,a] = \frac{\alpha_p + c}{\alpha_p + \beta_p + t} \\
+	E[q|c,a] = \frac{\alpha_q + a}{\alpha_q + \beta_q + c}
+\end{align}
+
+So, for example, $P_1$, assuming flat priors would look like the following:
+
+\begin{align}
+P_1 =
+\begin{pmatrix}
+  2\mathbin{/}3 & 1\mathbin{/}6 & 1\mathbin{/}6 & 0 & 0 & 0\\
+  0 & 1\mathbin{/}3 & 0 & 4\mathbin{/}9 & 2\mathbin{/}9 & 0\\
+  0 & 0 & 1\mathbin{/}3 & 0 & 2\mathbin{/}9 & 4\mathbin{/}9\\
+\end{pmatrix}
+\end{align}
+
+
+Note - $P_t$ is a very sparse matrix, one should use a sparse matrix implementation for large space and speed performance improvements.
 
 \end{document}
