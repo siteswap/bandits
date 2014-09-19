@@ -24,6 +24,7 @@
 \usepackage{amsmath}
 \usepackage{amsthm}
 \usepackage{amsbsy}
+\usepackage{float}
 %\usepackage{bm} % Possibly a better alternative to amsbsy for making bold typeface math.
 
 %%% Graphics packages
@@ -169,7 +170,7 @@ otherwise stated.\\
 
 \begin{abstract}
 
-Our work formulates the Real Time Bidding problem as a multi-armed bandit.
+Our work formulates the Real Time Bidding problem as a multi-armed bandit problem.
 
 We review current practises and argue that they are limited in their approach. 
 
@@ -259,7 +260,7 @@ There are a range of games where a generic model and asymptotic performance poli
 
 The common element in these games is the importance of extracting maximum information from each event. Figure 1.1 demonstrates the kind of performance improvement can be achieve through custom models and a model based decision policy.
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.7]{GIvsUCB1.pdf}
     \caption{Mean regret of Gittins index strategy vs UCB1}
@@ -279,7 +280,7 @@ Our objective is to develop a model which minimises the cost per acquisition ove
 
 \chapter{RTB Data}
 
-The following data was provided by Advance media and represents a typical RTB campaign, though acquisition rates can be much lower.
+The following data was provided by Advance media and represents a typical RTB campaign, though some campaigns can have much lower acquisition rates.
 
 We have 3 vector valued random variables. The ith index represents the values for site domain (website) i for a particular line item (product advertised). In the context on a MAB problem, each index represents an arm. The variables are defined as:
 \begin{itemize}
@@ -290,9 +291,9 @@ We have 3 vector valued random variables. The ith index represents the values fo
 
 \section{Exploratory analysis}
 
-We plot the relationship between CTR and CVR to look for any patterns. We remove sites with zero clicks, as there can be no acquisitions to relate to. 
+Figure 2.1 plots the relationship between CTR and CVR to look for any patterns. We remove sites with zero clicks as there can be no acquisitions to relate to. 
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics{CTRvsCVR}
     \caption{CTR against CVR by campaign}
@@ -302,7 +303,7 @@ We plot the relationship between CTR and CVR to look for any patterns. We remove
 
 Note the points on the far left of the plots have value q==0.  We see that CTRs take a broad range of values and CVR has less variation. 
 
-\subsection{data cleaning}
+\subsection{Data cleaning}
 
 When aggregated through the lifetime of the campaign we can get examples where $a>c$ due to the same visitor generating multiple "conversion events" by accidentally refreshing their page.
 
@@ -310,7 +311,7 @@ We produce a 'clean' version of the data set by removing all examples with $a_i 
 
 \subsection{CTR CVR dependency}
 
-The relationship between CTR and CVR is not obvious, we look at various ways to focus on important relationships that may be obscured - weighted correlation, focusing on subgroups.
+The relationship between CTR and CVR is not obvious, we will later look at various ways to focus on important relationships that may be obscured - weighted correlation, focusing on subgroups.
 
 
 \chapter{Binomial Data Models}
@@ -335,7 +336,7 @@ Our goal with these models is to help generate acquisitions by exploring the mod
 \section{Model definitions} 
 
 
-We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We then bring in intermediate clicks, hoping these can offer more information on the likelihood of future acquisitions. We discuss under what conditions clicks provide information on acquisitions in the appendix. We consider both cluster models as well as a correlation models to describe dependency between p and q.
+We start with simple binomial model (m1), then look to beta binomial (m3) to deal with over-dispersion. We discuss under what conditions clicks provide information on acquisitions in the appendix. We finally consider cluster models.
 
 \begin{description}
 	\item[Model 1 - Single Binomial]
@@ -409,54 +410,55 @@ Model 3 assumed that CTR and CVR are independent. Experience suggests that lever
 	\pi(p_1) = \pi(q_1) = Beta(10,1) \\
 \end{align}
 
-%
-%	\item[Model 6 - 2 cluster Beta-binomial]
-%
-% \begin{align}
-%	a_i \sim Bin(q_i,c_i) \\
-%	c_i \sim Bin(p_i,n_i) \\
-%	k \sim Bern(h) 
-%\end{align}
-%	\[ 
-%	q_i \sim 
-%  	\begin{cases}
-%		Beta(\alpha_{q0},\beta_{q0}) & \quad \text{if k is 0}\\
-%		Beta(\alpha_{q1},\beta_{q1}) & \quad \text{if k is 1}
-%	\end{cases}
-%	\]
-%	\[
-%	p_i \sim 
-%  	\begin{cases}
-%		Beta(\alpha_{p0},\beta_{p0}) & \quad \text{if k is 0}\\
-%		Beta(\alpha_{p1},\beta_{p1}) & \quad \text{if k is 1}\\
-%	\end{cases}
-%	\]
-%
-% \begin{align}
-%	\pi(h) \sim Unif(0,1) \\
-%	\pi(\alpha_{q0}) \sim Gamma(1,2) \\
-%	\pi(\beta_{q0}) \sim Gamma(1,2) \\
-%	\pi(\alpha_{p0}) \sim Gamma(1,2) \\
-%	\pi(\beta_{p0}) \sim Gamma(1,2) \\
-%	\pi(\alpha_{q1}) = \pi(\beta_{q1}) = \pi(\alpha_{p1}) = \pi(\beta_{p1}) = 1
-%\end{align}
-%
+
+	\item[Model 6 - 2 cluster Beta-binomial]
+
+Similar to model 5, but now using BetaBinomial cluster to allow for greater dispersion.
+
+ \begin{align}
+	a_i \sim Bin(q_i,c_i) \\
+	c_i \sim Bin(p_i,n_i) \\
+	k \sim Bern(h) 
+\end{align}
+	\[ 
+	q_i \sim 
+  	\begin{cases}
+		Beta(\alpha_{q0},\beta_{q0}) & \quad \text{if k is 0}\\
+		Beta(\alpha_{q1},\beta_{q1}) & \quad \text{if k is 1}
+	\end{cases}
+	\]
+	\[
+	p_i \sim 
+  	\begin{cases}
+		Beta(\alpha_{p0},\beta_{p0}) & \quad \text{if k is 0}\\
+		Beta(\alpha_{p1},\beta_{p1}) & \quad \text{if k is 1}\\
+	\end{cases}
+	\]
+
+ \begin{align}
+	\pi(h) \sim Unif(0,1) \\
+	\pi(\alpha_{q0}) \sim Gamma(1,2) \\
+	\pi(\beta_{q0}) \sim Gamma(1,2) \\
+	\pi(\alpha_{p0}) \sim Gamma(1,2) \\
+	\pi(\beta_{p0}) \sim Gamma(1,2) \\
+	\pi(\alpha_{q1}) = \pi(\beta_{q1}) = \pi(\alpha_{p1}) = \pi(\beta_{p1}) = 1
+\end{align}
+
 % TODO
 % \includegraphics{GraphMod.jpg}
 
-	\item[Model 7 - Correlated Beta-binomial]
-
-As an alternative to model 6, where rate prediction will change abruptly between clusters, we look for a model where q can vary smoothly as a function of p.
-
+%	\item[Model 7 - Correlated Beta-binomial]
+%
+%As an alternative to model 6, where rate prediction will change abruptly between clusters, we look for a model where q can vary smoothly as a function of p.
+%
 \end{description}
 
 
 \section{Generated data plots}
 
-To generate the data for each model, we first sampled $n$ from the Advance media data set. This minimises issues around modelling the distribution of n. $c$ and $a$ were then generated randomly based on the model parameters.
+To generate example data for each model, we first sampled $n$ from the Advance media data set. This avoids the need to model the distribution of n. $c$ and $a$ were then generated based on the model parameters and the sampled values of $n$. Figure 3.1 let's use visually compare the distribution of the different models.
 
-
-\begin{figure}[p]
+\begin{figure}[H]
     	\centering
 	\includegraphics[scale=0.7]{SynthData}
     	\caption{Model generated data}
@@ -470,7 +472,7 @@ To generate the data for each model, we first sampled $n$ from the Advance media
 
 \subsection{ Correlation measures}
 
-A dependency between CTR and CVR would be a big benefit in predicting AQR since clicks are more common than acquisitions. We define a few measures of correlation below. We apply these to the model generated data sets to see if they help distinguish the relationships present in m5 and m6 from the independent models m1 and m3. We also apply the measures to the Advance data set for comparison with the 4 models.
+A dependency between CTR and CVR would be a big benefit in predicting AQR since clicks are more common than acquisitions. We define a few measures of correlation below. We apply these to the model generated data sets to see if they help distinguish the relationships present in m5 from the independent models m1 and m3. We also apply the measures to the Advance data set for comparison with the models.
 
 \begin{description}
 	\item[Cor] Pearson correlation coefficient between CVR ($a/c$) and CTR ($c/n$).
@@ -485,9 +487,7 @@ A dependency between CTR and CVR would be a big benefit in predicting AQR since 
 
 \subsection{Goodness of fit tests}
 
-We take the approach of starting with a simple model and run further tests to decide whether there is evidence to expand the model. 
-
-Where possible we prefer tests with strong theoretical backing, e.g. LR. As model complexity rises it becomes harder to rely on these. We use information criteria and posterior validation.
+We take the approach of starting with a simple model and develop tests to decide whether there is evidence to expand the model. 
 
 \begin{description}
 	\item[test 1] 
@@ -528,16 +528,14 @@ Our argument for using this test here is that:
 % TODO - compare ratio value to alpha, or do chisq on deviances?
 
 
-	\item[test 3] We create 2 hypothetical groups split based on the median realised acquisition rate. We create a binary variable $X$ for membership of this group. We then use binomial regression to fit 1 and 2 cluster models:
+	\item[test 3] We create 2 hypothetical groups split based on a percentile realised acquisition rate. We create a binary variable $X$ for membership of this group. We then use binomial regression to fit 1 and 2 cluster models:
 
 \begin{align}
 	M_0 := (a,c) \sim 1 \\
 	M_a := (a,c) \sim X + 1
 \end{align}
 
-We then construct a likelihood ratio test comparing $M_0$ with $M_a$. 
-
-We choose this test because it is easy to set up and may indicate clustering. A more accurate test would use EM to assign data points to clusters.
+We then construct a likelihood ratio test comparing $M_0$ with $M_a$. We choose this test because it is easy to set up and may indicate clustering. A more accurate test would use EM to assign cluster membership.
 %
 %LR test Model 1 vs Model 5 - 1 cluster binomial vs 2 cluster binomial. In fitting the 2 cluster model, we visually split the data and fit 2 separate binomials, so the test is only approximate. 
 %
@@ -604,9 +602,10 @@ We see that the logIWCc is the best performing correlation measure, with a stron
 
 What this means for the Advance data is inconclusive, though rank correlation suggests there is a dependency, logIWCc is weaker and binomial regression even suggests a slight negative correlation.
 
-Test 1 suggests we should reject the binomial model for all but m1, as we would expect.
-Test 2 says we should prefer the beta binomial model for all but m1, as we would expect. 
+In terms of the goodness of fit tests, test 1 suggests we should reject the binomial model for all but m1, as we would expect.
+Test 2 says we should prefer the beta binomial model for all but m1, also as we would expect. 
 Test 3 turns out to be a poor tool. Although with a value of .45 we get sensible results, it is very sensitive to our choice of boundary to split the clusters.
+We can say about the Advance data is that it is too dispersed for a simple binomial model.
 
 % TODO Test 4 can't fit the data.
 
@@ -621,6 +620,8 @@ Test 3 turns out to be a poor tool. Although with a value of .45 we get sensible
 %
 
 \chapter{ Sequential Decision Policies }
+
+We provide an overview of mutli-armed bandits approaches and discuss their applicability to our problem.
 
 \section{ Markov Decision Processes }
 
@@ -671,11 +672,11 @@ A multi-armed bandit is a single state MDP with unknown rewards. It has K action
 
 \begin{align}
 &\mathcal{A} = \{1,...,K\} \\
-&a \in \mathcal{A} \\
+&a_t \in \mathcal{A} \\
 &r_t \sim \mathcal{R}_{a_t} 
 \end{align}
 
-Typically bandits policies are assessed by how well they minimise \textit{regret}. The regret of policy $\pi$ is defined as the expected difference from the \textit{oracle} policy of always choosing arm with maximum expected reward:
+Typically bandits policies are assessed by how well they minimise \textit{regret}. The regret of policy $\pi$ is defined as the expected difference from the \textit{oracle} policy. The oracle policy always chooses arm with maximum expected reward:
 
 \begin{align}
 &\mu_a = E[r|a] \\
@@ -689,12 +690,12 @@ PAC learning approaches look to limit the number of sub-optimal decisions. But t
 
 \section{ Bayes Adaptive policy }
 
-For given priors, it is possible to define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown rewards. We can turn this in to a many state MDP with known rewards by representing each possible posterior value as a new state. Each transition probability is given it's expected value based on the current posterior. This idea is present in early discussions of sequential binomial decision problems ~\cite{chernoff1965bayes} but has more recently been labelled Bayes adaptive reinforcement learning in machine learning literature ~\cite{duff2002optimal}. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation. Appendix provides an example of how this is calculated.
+For given priors, it is possible to define a 'Bayes-optimal' policy. A MAB problem is a one state MDP with unknown rewards. We can turn this in to a many state MDP with known rewards by representing each possible posterior value as a new state. Each transition probability is given it's expected value based on the current posterior. This idea is present in early discussions of sequential binomial decision problems ~\cite{chernoff1965bayes} but has more recently been labelled 'Bayes adaptive reinforcement learning' in the machine learning literature ~\cite{duff2002optimal}. Now that we know the action rewards and transition probabilities, the optimal decision policy is provided by the Bellman equation. Appendix A.2 provides an example of how this is calculated.
 
-The graphs below provide a demonstration of this policy. In each graph, we see which arm is optimal as a function of rounds remaining. Note the high expectation arm is preferred for short campaigns and changes toward the high variance arms as the time horizon increases. The 6 panes show one possible scenario play out as arms are chosen and posteriors are updated.
+Figure 4.1 below provides a demonstration of this policy. In each frame, we see which arm is optimal as a function of rounds remaining. In the first frame, the high expectation arm (coloured blue with prior $Beta(7,5)$) is preferred for short campaigns. The preference then changes toward the mid variance, mid expectation arm (coloured redwith prior $Beta(4,3)$). And for games with 4 rounds or more, the high variance arm (black) offers the highest value. The 6 panes show one possible scenario play out as arms are chosen and posteriors are updated.
 
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.7]{BARLillustration.pdf}
     \caption{Bayes Adaptive reinforcement learning solutions}
@@ -704,10 +705,10 @@ The graphs below provide a demonstration of this policy. In each graph, we see w
 
 This solution has a number of particularly attractive characteristics over probability matching strategies such as Thompson sampling and UCB:
 \begin{itemize}
-	\item We see that for small numbers of rounds, the algorithm purely exploits the high expectation arms, since there are too few rounds for the high variance arms to produce enough positive results to change our decisions. This is very relevant for our domain where we may have millions of arms (sites x placements x creatives x userType) but only a few 100,000 rounds and expectation of only a few 100 acquisitions. This addresses the issues we saw in previous section where the click only model would benefit from early exploitation of non-optimal arms. Thompson sampling and UCB would typically over explore in these situations too.
-	\item We can still integrate our prior information.
-	\item If arms have some common dependency, such as using the same creative it understands there is greater exploration value.
-	\item Policy responds to changes how we value events, underlying model, time horizons etc.
+	\item One's intuition is that the beginning of a game should focus more on exploring high variance arms, where as the end game should focus on exploiting arms with high expectation. We note that these qualities arise quite naturally from the Bayes Adaptive MDP formulation. This is very relevant for our domain where we may have millions of arms (sites x placements x creatives x userType) but only a few 100,000 rounds and expectation of only a few 100 acquisitions. UCB type algorithms will typically over explore in this scenario.
+	\item We can easily integrate our prior information.
+	\item If arms have some common dependency, such as using the same creative the model correctly understands the is greater exploration value.
+	\item The policy responds to changes in how we value events, the underlying model and time horizons.
 	\item The approach is orthogonal to the underlying model, so that we can develop the underlying model without needing to update the decision algorithm.
 \end{itemize}
 
@@ -730,7 +731,7 @@ Thompson sampling is a non deterministic strategy. The policy chooses arm $j$ wi
 w_j = P(\mu_j > \max(\mu_1, ..., \mu_k))
 \end{align}
 
-Agrawal and Goyal ~\cite{DBLP:journals/corr/abs-1111-1797} prove asymptotic optimality for the binomial case, as well as demonstrate finite horizon performance improvement over KL-UCB and UCB using simulation studies.
+Agrawal and Goyal ~\cite{DBLP:journals/corr/abs-1111-1797} prove asymptotic optimality for the binomial case, as well as demonstrate finite horizon performance improvement over KL-UCB and UCB using simulation studies. We like this algorithm because it is easy to apply to complex models, provided you can sample from the posterior.
 
 \section{ Gittins Index }
 
@@ -740,9 +741,9 @@ Gittins ~\cite{gittins1979bandit} was able to show that the MAB problem with geo
 v(s) = \sup_{\tau > 0} E\left[ \sum_{t=0}^{\tau-1} b^t \mathcal{R}(s_t) | s_0 = s  \middle/  E\left[ \sum_{t=0}^{\tau-1} b^t | s_0 = s \right]  \right]
 \end{align}
 
-Although the Gittins index is not optimal in the finite horizon case (the value of alternate arms changes as a result of the loss of 1 round), it is a very close approximation. Our testing (not presented) confirms that GI and BA strategies achieve near equal regret.
+Although the Gittins index (GI) is not exactly optimal in the finite horizon case (the value of alternate arms changes as a result of the loss of 1 round), it is an extremely close approximation. Our testing (not presented) confirms that GI and BA strategies achieve near equal regret.
 
-As the calculation involves only 1 arm, the computation has significantly lower order, with the potential to share results between arms. Comparing the the Bayes Adaptive solution $O((\#\mathcal{A} \#\mathcal{P})^T)$, we instead have:
+As the calculation involves only 1 arm, the computation has significantly lower order, with the potential to share results between arms. Comparing the the Bayes Adaptive solution $O((\#\mathcal{A} \#\mathcal{P})^T)$, where $\#\mathcal{A}$ is the number of actions, $\#\mathcal{P}$ is the number of transitions and $T$ is the number of rounds, we instead have:
 
 \begin{itemize}
 	\item $O(\#\mathcal{A} {\#\mathcal{P}}^T)$ - Exact method.
@@ -751,35 +752,35 @@ As the calculation involves only 1 arm, the computation has significantly lower 
 
 \subsection{ Exact method }
 
-Gittins 1979 ~\cite{gittins1979bandit} describes an exact method for calculating the index for a finite horizon. 
+Gittins 1979 ~\cite{gittins1979bandit} describes an exact method for calculating the index for a finite horizon. Essentially, we calculate the 'best possible rate of reward' at the final round, which is just the immediate expected reward. We can then use backward induction to calculate the value for earlier rounds.
 
-The calculation of this index typically involves choosing a number of rounds to look ahead. In infinite horizon game, the less the discount factor, the more rounds are required to get a close approximation. Then calculate the value at round N and use backwards induction to calculate the value for round 0.
+For the infinite horizon game the calculation is approximated by choosing a number of rounds to look ahead. A discount factor near 1 requires more rounds to get a close approximation.
 
 \subsection{ Calibration method }
 
-There are several methods looking for more computationally efficient calculation, the most popular being the calibration method where a grid of candidate GI values is used to obviate the need to recurse. See Nino-Mora ~\cite{nino2011computing} for an overview. The cost for these methods is still exponential in the order rounds and so will not scale to say a million rounds without some approximations used.
+There are several methods looking for more computationally efficient calculation, the most popular being the calibration method where a grid of candidate GI values is used to obviate the need to recurse every possible path. See Nino-Mora ~\cite{nino2011computing} for an overview. The cost for these methods is still exponential in the order rounds and so will not scale to say a million rounds without some approximations used.
 
-We demonstrate in the appendix that it is simple to adapt the GI for binomial bandits to the models involving independent clicks and acquisitions as it only requires taking expectations. Note that since this is a finite horizon game, there is no loss of accuracy associated with calculating a finite number of rounds.
+We demonstrate in the appendix that it is simple to adapt the GI for binomial bandits to the models involving independent clicks and acquisitions as it only requires taking expectations. Since this is a finite horizon game, there is no loss of accuracy associated with calculating a finite number of rounds.
 
 \subsection{ Approximations }
 
-Noting that GI is a function of only 5 variables, we consider approximations. Brezzi and Lai ~\cite{brezzi2002optimal} provide a closed form (i.e. constant order) solution to the infinite horizon problem using a Normal approximation by relating the discrete time problem to a continuous time Wiener process.  The same paper references Lai ~\cite{lai1987adaptive} for asymptotically optimal solutions for the finite horizon, undiscounted problem for single parameter exponential family distributions. Burnetas and Katehakis ~\cite{burnetas1996optimal} extend this to multi-parameter univariate distributions.
+Noting that GI is a function of only 5 variables, we consider approximations. Brezzi and Lai ~\cite{brezzi2002optimal} provide a closed form (i.e. constant order) solution to the infinite horizon binomial problem using a Normal approximation by relating the discrete time problem to a continuous time Wiener process.  The same paper references Lai ~\cite{lai1987adaptive} for asymptotically optimal solutions for the finite horizon, undiscounted problem for single parameter exponential family distributions. Burnetas and Katehakis ~\cite{burnetas1996optimal} extend this to multi-parameter univariate distributions.
 
-The multi-parameter solution would fit our both model well and provide opportunity to extend the funnel to include additional intermediate steps. Unfortunately, we note, our UCB and Thompson sampling testing finds these asymptotically optimal approaches do not work well with the arms, rounds and rates we work with.
+The multi-parameter solution would fit our both model well and provide opportunity to extend the funnel to include additional intermediate steps. Unfortunately, as we later show, these asymptotically optimal approaches do not work well with the arms, rounds and rates we work with. 
 
 \section{ Lai and Robbins lower bound }
 
-Motivated by Gittins proof of the existence of optimal index policies, Lai and Robbins ~\cite{lai1985asymptotically} proved that a class of decision algorithms meeting certain conditions were asymptotically optimal learners. This insight is the basis for the deterministic probability matching, UCB algorithms. 
+Motivated by Gittins' proof of the existence of optimal index policies, Lai and Robbins ~\cite{lai1985asymptotically} proved that a class of decision algorithms meeting condition described by (4.15) were asymptotically optimal learners. This insight became the basis for the family of deterministic probability matching, UCB algorithms. 
 
 \begin{align}
 \operatorname{regret}(\pi)  \leq  \frac{\ln(n)}{D_{KL}(\mu_j||\mu^{*})} \quad as \quad n \to \infty
 \end{align}
 
-We note that the optimal asymptotic regret leaves scope for a large constant regret term, as we found in our experiments poor performance over limited horizons. We conjecture that due to the high number of arms, and low success rate, in practise we do not get to the region where asymptotic behaviour dominates.
+We note that the optimal asymptotic regret leaves scope for a large constant regret term and poor performance over limited horizons. We conjecture that due to the high number of arms, and low success rate, in practise we do not get to the region where asymptotic behaviour dominates.
 
 \section{ UCB1 }
 
-There is a large family of index algorithms based on assigning an 'upper confidence bound' value to each arm. In these, we allow the estimated payoff $\hat{\theta}$ of the arm to increase up to a constraint based a maximum KL divergence of the parameter. The $\lambda$ value controlling the constraint will typically vary based on the number of times the arm has been played and the current round.
+Based on Lai and Robbins lower bound, there is a large family of index algorithms based on assigning an 'upper confidence bound' value $v_j$ to each arm. In these, we allow the estimated payoff $\hat{\theta}$ of the arm to increase up to a constraint based a maximum KL divergence of the parameter. The $\lambda$ value controlling the constraint will typically vary based on the number of times the arm has been played and the current round.
 
 \begin{align}
 v_j = \inf\{ \mu : \mu \geq \hat{\mu_j}, D_{KL}(\mu||\hat{\mu_j}) \geq \lambda\} 
@@ -791,13 +792,15 @@ Where $n$ is the current round, $n_j$ is the number of times arm $j$ has been pl
 v_j = \hat{\mu_j} + \sqrt{ \frac{2 \ln{n}}{n_j}  }
 \end{align}
 
-Agrawal and Goyal ~\cite{DBLP:journals/corr/abs-1111-1797}, in their analysis of Thompson sampling demonstrated superior performance from Thompson sampling compared to a variety of modern UCB algorithms for binomial problems.
+Agrawal and Goyal ~\cite{DBLP:journals/corr/abs-1111-1797}, in their analysis of Thompson sampling demonstrated superior performance from Thompson sampling compared to a variety of modern UCB algorithms for binomial problems. We choose not to explore UCB algorithms heavily because of this fact as well as the difficulty of integrating prior information.
 
 \chapter{ Results }
 
+For the purposes of testing, we assume an underlying data model of M2. We discuss how to apply the same procedures to other models in the Extensions section.
+
 \section{Test harness}
 
-A simulation test harness was set up to simulate MAB trials. Custom policies were run in the harness and assessed by calculation of realised regret.
+A simulation test harness was set up to simulate MAB trials. Custom policies were run in the harness and assessed by calculation of realised regret. The harness algorithmis as follows:
 
 \begin{enumerate}
 	\item Experimenter defines a bivariate Beta prior distribution parameterised by alpha and beta values for p and q.
@@ -813,8 +816,10 @@ A simulation test harness was set up to simulate MAB trials. Custom policies wer
 
 \section{Thompson Sampling}
 
+We describe 3 models using a Thompson Sampling strategy.
+
 \begin{description}
-	\item[ts\_clicks] Each arm is initialised with a beta prior using the alpha and beta values for p. Arms are chosen using Thompson sampling based on the probability of each arm having maximum p. The algorithm seeks to optimise clicks only, though regret is still calculated in same way.
+	\item[ts\_clicks] Each arm is initialised with a beta prior using the alpha and beta values for p. Arms are chosen using Thompson sampling based on the probability of each arm having maximum p. The algorithm seeks to optimise clicks only, though regret is still calculated in the same way.
 	\item[ts\_both] Each arm is initialised with beta prior for both p and q. Arms are chosen using Thompson sampling based on the probability of each arm having maximum r value (i.e. pq). Since the distribution of pq does not in general have an analytic form, we use sampling. The priors on p and q are updated in the usual way.
 	\item[ts\_acqs] The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not directly translate in to a Beta prior on r, we estimate the parameters of a Beta prior for r using the mean and variance of p and q. This new Beta prior is updated in the usual way with acquisitions and views.
 \end{description}
@@ -824,21 +829,23 @@ A simulation test harness was set up to simulate MAB trials. Custom policies wer
 We run a set of validation checks to make sure we are not favouring one strategy in some extrinsic way - such as a more informative prior or more accurate posterior sampling.
 
 \begin{enumerate}
-	\item  We give p a point prior at value 1. With this, we expect to see the same performance from ts acqs and ts both. ts clicks should select arms arbitrarily.
+	\item  We give p a point prior at value 1. With this, we expect to see the same performance from ts\_acqs and ts\_both. ts clicks should select arms arbitrarily.
 	\item  We give q a point prior at value 1. With this, we expect to see the same performance from all 3 strategies as they are all 'learning' click rate.
-	\item  We give both p and q flat priors. We expect to see the same performance from ts acqs and ts both as our analysis shows this is a special case, equivalent to modelling acquisitions only.
+	\item  We give both p and q flat priors. We expect to see the same performance from ts\_acqs and ts\_both as our analysis shows this is a special case, equivalent to modelling acquisitions only.
 \end{enumerate}
+
+We do not present the validation results.
 
 \subsection{Plots}
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.5]{P4to5UCB}
     \caption{Comparative regret of Thompson sampling versus UCB1}
     % \label{fig:GIvsUCB1}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.7]{P1to6.pdf}
     \caption{ Thompson Sampling performance varying priors }
@@ -851,13 +858,13 @@ We run a set of validation checks to make sure we are not favouring one strategy
 \subsection{Discussion}
 
 \begin{description}
-	\item[ts\_clicks] typically reduces regret very quickly particularly with few arms and high variance on p. But over longer periods loses out to ts acqs and ts both since the best arm does not always have the highest rate of clicks. If there is a high variance on q, it can go very wrong.
-	\item[ts acqs] performs well for long trials or where q can take on high values. But typically learns slowly, particularly when q has small values.
-	\item[ts\_both] robust to the pathological cases that see poor performance from ts clicks and ts acqs, and in certain cases produced significantly improved results on both. In all but one instance (discussed next), ts both is at least as good as either algorithm.
-
+	\item[ts\_clicks] typically reduces regret very quickly particularly with few arms and high variance on p. But over longer periods loses out to ts\_acqs and ts\_both since the best arm does not always have the highest rate of clicks. If there is a high variance on q, it can go very wrong.
+	\item[ts\_acqs] performs well for long trials or where q can take on high values. But typically learns slowly, particularly when q has small values.
+	\item[ts\_both] robust to the pathological cases that see poor performance from ts\_clicks and ts\_acqs, and in certain cases produced significantly improved results on both. In all but one instance (discussed next), ts\_both is at least as good as either algorithm.
+	\item[ucb1\_clicks] We confirm the Agrawal and Goyal ~\cite{DBLP:journals/corr/abs-1111-1797} result that UCB performs poorly compared to Thompson sampling and do not explore UCB strategies further.
 \end{description}
 
-We also note that ts clicks initially beats ts both, though this advantage goes away once the number of arms is increased. We hypothesise this is a feature of Thompson sampling rather than the model - by ignoring some of the uncertainty in the true value of r, ts clicks gains an early exploitation advantage.
+We also note that ts\_clicks initially beats ts\_both, though this advantage goes away once the number of arms is increased. We hypothesise this is a feature of Thompson sampling rather than the model - by ignoring some of the uncertainty in the true value of r, ts\_clicks gains an early exploitation advantage.
 
 We also note that as the number of arms goes up, the regret increases. This could be because the 'best arm' becomes further from the average arm given more arms, but possibly a sign of over-exploration.
 
@@ -869,7 +876,7 @@ The previous results demonstrated that a more sophisticated model offered strong
 With this in mind, we now look at optimal decision rules incorporating the varying number of arms and campaign length.
 
 \begin{description}
-	\item[ba\_both] Each arm is initialised with beta prior for both p and q. Arm with maximum action value is always chosen, where multiple arms have same action value, one is selected at random.
+	\item[ba\_both] Each arm is initialised with beta prior for both p and q. Arm with maximum action value is always chosen as calculated by Bayes Adaptive method, where multiple arms have same action value, one is selected at random. 
 	\item[ba\_acqs] The strategy only looks at acquisitions per view, ignoring clicks. Since the Beta priors on p and q do not directly translate in to a Beta prior on r, we estimate the parameters of a Beta prior for r using the a method of moment from the mean and variance of p and q. This new Beta prior is updated in the usual way with acquisitions and views. The arm selected is the one with maximum action value.
 \end{description}
 
@@ -878,9 +885,9 @@ With this in mind, we now look at optimal decision rules incorporating the varyi
 
 \subsection{Plots}
 
-Using the same harness, we set up the experiment using a 'Bayes-optimal' exploration algorithm. Due to the exponential order cost of this algorithm, we must keep the games to a small number of rounds. 
+Using the same harness, we set up the experiment using a 'Bayes-optimal' exploration algorithm. Due to the exponential order cost of this algorithm, we must keep the games to a small number of rounds and only 2 arms.
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.9]{TSvsBARL.pdf}
     \caption{ Thompson Sampling vs Bayes Adaptive RL }
@@ -888,32 +895,41 @@ Using the same harness, we set up the experiment using a 'Bayes-optimal' explora
 \end{figure}
 
 
-
-We see both Bayes Adaptive strategies improve on their Thompson Sampling equivalents. The strategy combining the improved model as well as the optimal decision policy offers very significant benefits.
+We see both Bayes Adaptive strategies improve substantially on their Thompson Sampling equivalents. The strategy combining the improved model as well as the optimal decision policy offers very significant benefits.
 
 
 \section{Gittins Index}
 
-The Bayes-optimal solutions remain attractive. Although the Bellman equation gives us optimal solution, the computational time becomes prohibitive for large trials. We turn to GI solutions to provide nearly identical results with less computation.
+The Bayes-optimal solutions are very attractive. Although the Bellman equation gives us an optimal solution, the computational time becomes prohibitive for large trials. We turn to GI solutions to provide nearly identical results with less computation.
+
+\begin{description}
+	\item[gi\_both] Like ba\_both, but using the GI calibration method documented in the appendix.
+	\item[gi\_clicks] Like ba\_clicks, but using a GI calibration method only for clicks.
+\end{description}
+
+
 
 \subsection{Plots}
 
-\begin{figure}[p]
+We set up the test harness as before. Using the GI solution, we are able to run trials for a large number of arms and a few hundres of rounds.
+
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.7]{GIvsTS.pdf}
     \caption{ Gittins Index vs Thompson Sampling - clicks only }
     % \label{fig:GIvsUCB1}
 \end{figure}
 
+In Figure 5.4 we have set the prior around $q$ to be sharply peaked, so that minimising acquisition rate regret is equivalent to minimising click rate regret. As with the Bayes Adaptive strategy, we see a huge performance improvement. As we are plotting mean regret, the total value lose is the difference between the strategies times the number of rounds. 
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.7]{GIBoth.pdf}
     \caption{ Gittins Index vs Thompson Sampling - clicks and acquisitions }
     % \label{fig:GIvsUCB1}
 \end{figure}
 
-
+Again, in Figure 5.5 we see the GI strategy very quickly making huge performance improvements over Thompson Sampling.
 
 
 \chapter{Extensions}
@@ -922,13 +938,13 @@ The Bayes-optimal solutions remain attractive. Although the Bellman equation giv
 
 Our decision policy experiments assumed m2 as the underlying model, but our intention here is to provide a template for many different models. 
 
-Both m3 and m5 require more involved sampling techniques to generate samples from their posterior distributions. But Thompson Sampling only requires a single sample point from each arm per round, so for most applications this is perfectly feasible.
+Both m3 and m5 require more involved sampling techniques to generate samples from their posterior distributions. Thompson Sampling only requires a single sample point from each arm per round, so for most applications this is perfectly feasible.
 
-We may also possible to apply the GI solution to m3 and m5 models, though taking expectations can only be achieved with Monte Carlo methods, so will be slower.
+It is also possible to apply the GI solution to m3 and m5 models, though since taking expectations can only be achieved with Monte Carlo methods, this will be slower.
 
 \section{Contextual bandits}
 
-Factorial bandits are way to bring in regressor information. Here, the rate parameter $p$ is predicted by a probit regression model. The coefficient vector $\mathbf{\theta}$ of the model typically has a multivariate normal prior, which is then updated in a Bayesian fashion. As with our hierarchical models m3 and m5, the posterior does not have an analytic form ~\cite{scott2010modern} but there exist reasonably efficient sampling algorithms for a Thompson Sampling decision policy.
+Factorial bandits are way to bring in regressor information. Here, the rate parameter $p$ is predicted by a probit regression model. The vector of coefficients $\mathbf{\theta}$ of the model typically has a multivariate normal prior, which is then updated in a Bayesian fashion. As with our hierarchical models m3 and m5, the posterior does not have an analytic form ~\cite{scott2010modern} but there exist reasonably efficient sampling algorithms for a Thompson Sampling decision policy.
 
 \begin{align}
 	c_i \sim Bin(p_i,n_i) \\
@@ -947,7 +963,7 @@ Factorial bandits offers a way to bring in important information such as time of
 	\pi(\mathbf{\phi}_i) = \mathcal{N}(\mu_p,\Sigma_p) 
 \end{align}
 
-With m3, $\mu$ and $\Sigma$ would be variables shared across arms and updated online. With m2 they would be updated independently.
+As for m3, $\mu$ and $\Sigma$ would be variables shared across arms and updated online. With m2 they would be updated independently.
 
 As with our earlier models, a well motivated, informative prior on $q_i$ is likely to provide significant performance improvement.
 
@@ -967,13 +983,13 @@ We note that although the model is complex, the number of possible outcomes is s
 
 \section{Scaling up}
 
-We may extend the $r$ round, 2-stage (clicks an acquisitions) model to $s$ stages. Using Gittins index, we will have $r^s$ states in the final round, meaning we will have an $r^s$ by L matrix, which we perform $r$ matrix multiplications.
+We may extend the $r$ round, 2-stage (clicks an acquisitions) model to $s$ stages. Using Gittins index, we will have $r^s$ states in the final round, meaning we will have an $r^s$ by L matrix, which we perform $r$ matrix multiplications on.
 
 There are several ways to reduce the computational cost due to the number of arms - grouping similar arms (e.g. contextual / factorial bandits ) or reuse of similar GI calculations. But the limiting issue is the cost due to large number of rounds.
 
 Given that we are often working with very small rates, we might calculate GI by grouping the updates and enumerating only the more likely outcomes. For example, with a rate of 0.5\%, we might group by 1000 rounds and consider outcomes 0 to 12 which covers 0.998 of the distribution. 
 
-
+If GI solutions fail to scale to sufficiently many rounds, one might consider a function approximation since the performance improvement is so large, even a poor approximation may be a good solution.
 
 
 
@@ -1097,9 +1113,9 @@ We can follow the calculation through to step (44) where the $v$ terms no longer
 
 We see that when $ \alpha_p = \alpha_q + \beta_q $ we will get a Beta form, but otherwise it is not analytic. 
 
-\section{Bayed Adaptive MDP}
+\section{Bayes Adaptive MDP}
 
-We show the Bayes Adaptive MDP for a 2 arm, 2 round game under the 'both' model. Each state, S, is defined by the 8-tuple of prior parameters, updated according to the outcome of each trial. From each state, we have the same control options - arm1 or arm2. There are three possible state transitions - no click, click but no acquisition, click and acquisition. The transition probabilities are the expectations, given the prior values. There is a payoff of 1 for transitions with an acquisition.
+We show the Bayes Adaptive MDP for a 2 arm, 2 round game under the m2 aka 'both' model. Each state, S, is defined by the 8-tuple of prior parameters, updated according to the outcome of each trial. From each state, we have the same control options - arm1 or arm2. There are three possible state transitions - no click, click but no acquisition, click and acquisition. The transition probabilities are the expectations, given the prior values. There is a reward of 1 for transitions with an acquisition.
 
 \begin{align}
 s0 =
@@ -1125,7 +1141,7 @@ s6 =
   \end{pmatrix}
 \end{align} 
 
-\begin{figure}[p]
+\begin{figure}[H]
     \centering
     \includegraphics[scale=0.6]{BAMDP.jpg}
     \caption{ Bayes Adaptive Markov Decision Process - Model 2 }
@@ -1150,7 +1166,7 @@ The optimal policy under this MDP is to greedily choose action with maximum valu
 
 \section{Gittins index calculation}
 
-We can adapt the above MDP to calculate a Gittins index for arm 1. To do this, we replace arm 2 with an arm with fixed payoff $\lambda$. We may then calculate the maximum possible payoff of arm 2 such that both arms have equal value in the first round. The most efficient method to do this is the 'calibration method' whereby a matrix of 'candidate' $\lambda$ values is used to calculate the index to arbitrary precision.
+We can adapt the Bayes Adaptive MDP to calculate a Gittins index for arm 1. To do this, we replace arm 2 with an arm with fixed reward $\lambda$. We may then calculate the maximum possible payoff of arm 2 such that both arms have equal value in the first round. The most efficient method to do this is the 'calibration method' whereby a matrix of 'candidate' $\lambda$ values is used to bound the true the index value to arbitrary precision.
 
 To adapt the calibration algorithm described in Nino-Mora ~\cite{nino2011computing} to our 2 stage binomial model, we need to develop a schema for constructing transition matrices for information states between rounds.
 
@@ -1164,17 +1180,17 @@ At each round $t$, we construct an $i$ by $j$ transition matrix $P_t$. For each 
 
 No clicks keeps same index:
 \begin{align}
-	&P(i,i) = 1 - E[p|c,a]
+	&P_t(i,i) = 1 - E[p|c,a]
 \end{align}
 
 Click but no acquisition advances index by c+1:
 \begin{align}
-	&P(i,i+c+1) = (1 - E[q|c,a])E[p|c,a] 
+	&P_t(i,i+c+1) = (1 - E[q|c,a])E[p|c,a] 
 \end{align}
 
 Click and acquisition advances index by c+1+1:
 \begin{align}
-	&P(i,i+c+2) = E[q|c,a]E[p|c,a] 
+	&P_t(i,i+c+2) = E[q|c,a]E[p|c,a] 
 \end{align}
 
 At this point we have not specified the nature of the model. In fact, the algorithm is identical for all 2 stage binomial models. The only thing we need from the model are the conditional expectations for the information state transitions. Like Thompson Sampling, this orthogonality is very attractive from an implementation point of view.
