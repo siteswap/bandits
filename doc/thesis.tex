@@ -436,11 +436,11 @@ Similar to model 5, but now using BetaBinomial cluster to allow for greater disp
 	\]
 
  \begin{align}
-	\pi(h) \sim Unif(0,1) \\
-	\pi(\alpha_{q0}) \sim Gamma(1,2) \\
-	\pi(\beta_{q0}) \sim Gamma(1,2) \\
-	\pi(\alpha_{p0}) \sim Gamma(1,2) \\
-	\pi(\beta_{p0}) \sim Gamma(1,2) \\
+	\pi(h) = Unif(0,1) \\
+	\pi(\alpha_{q0}) = Gamma(1,2) \\
+	\pi(\beta_{q0}) = Gamma(1,2) \\
+	\pi(\alpha_{p0}) = Gamma(1,2) \\
+	\pi(\beta_{p0}) = Gamma(1,2) \\
 	\pi(\alpha_{q1}) = \pi(\beta_{q1}) = \pi(\alpha_{p1}) = \pi(\beta_{p1}) = 1
 \end{align}
 
@@ -992,12 +992,34 @@ Given that we are often working with very small rates, we might calculate GI by 
 If GI solutions fail to scale to sufficiently many rounds, one might consider a function approximation since the performance improvement is so large, even a poor approximation may be a good solution.
 
 
+\chapter{Conclusion}
+
+Our goal was to improve on current RTB models by formalising the problem as a multi-armed bandit. We developed a 2 stage binomial model custom improved decision policies which offers substantial improvements over standard UCB optimisation of CTR. 
+
+In our work, we find 2 important principles emerge:
+\begin{enumerate}
+	\item A well developed custom model can substantially improve campaign goals, over simple CTR models.
+	\item Custom decision policies, optimised for the underlying model can further increase performance by a large margin.
+\end{enumerate}
+
+We feel MAB research has tended to focus on asymptotic performance and stanard models. Our testing shows that asymptotically optimal strategies can be very far from optimal over practical timescales. Methods such as Thompson sampling and Gittins indices can leverage sophisticated models without requiring additional engineering on the policy side.
 
 
+\section{Further work}
 
+We would like to implement the suggestion made in the extensions section, where we apply TS or GI solutions to stochastic process rewards. Our intuiton is that if rewards are moving quickly, short horizon GI solutions may be close to optimal. This would offer a big improvement over current strategies.
 
+ Brezzi and Lai ~\cite{brezzi2002optimal} developed an excellent approximation for the infinite horizon binomial bandit. Unfortunately this is the only bandit approximation algorithm we could find. We would like to investigate if general purpose approximation procedures might yield better results than Thompson sampling.
 
+\section{What did not work}
 
+At the start of the project we invested a lot of time trying to apply RStan to our modelling problems. Our hope was that it offered a high level Bayesian modelling language that would allow us to iterate through many models quickly. The tool is excellent but has 2 critical limitations for our purpose:
+\begin{enumerate}
+	\item HMC can not sample from categorical variables, so we could not take samples or MAP estimates for cluster models.
+	\item When one's model has a large vector of parameters, as ours do, one needs to exploit the dependcy structure with something like Gibbs sampling. The parameter space is too large for HMC but unfortunately, there is no way use Stan's HMC within Gibbs. If you use Stan, it must be a pure HMC fitted model. If you want any Gibbs style sampling, you must write the entire model outside of Stan.
+\end{enumerate}
+
+Because of this, we moved on from some of the early modelling work and cross validation testing before completing it. We document this effort in appendix A.4.
 
 
 
@@ -1214,5 +1236,129 @@ P_1 =
 
 
 Note - $P_t$ is a very sparse matrix, one should use a sparse matrix implementation for large space and speed performance improvements.
+
+\section{RStan cluster modelling}
+
+\begin{verbatim}
+
+# Binomial cluster model m5
+gm1c <- function(d){
+  
+  gm1c_dat <- list(N = dim(d)[1], 
+                   K = 2,
+                   a = d$a,
+                   v = d$v
+                   )
+  
+  model1_clust_code <-  'data {
+    int<lower=0> N;  // number of data points
+    int<lower=1> K;  // number of clusters
+    int<lower=0> a[N];       // aqs
+    int<lower=1> v[N];       // views
+  }
+  transformed data {
+    real<upper=0> neg_log_K;
+    neg_log_K <- -log(K); // Equal prior weights
+  }
+  parameters {
+    real<lower=0> alpha[K]; // cluster means
+    real<lower=0> beta[K];  
+  }
+  transformed parameters {
+    real<upper=0> soft_z[N,K]; // log unnormalized cluster assigns
+    for (n in 1:N)
+      for (k in 1:K)
+        soft_z[n,k] <- neg_log_K + beta_binomial_log(a[n],v[n],alpha[k],beta[k]);
+  }
+  model {
+    for (k in 1:K){
+      alpha[k] ~ uniform(0,10000);  // prior 
+      beta[k] ~ uniform(0,10000);  // prior
+    }
+    for (n in 1:N)
+      increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
+  }'
+  
+  stan(model_code = model1_clust_code, data = gm1c_dat, iter = 1000, chains = 4)
+  
+}
+
+
+
+# BetaBinomial cluster model m6
+gm2c <- function(d){
+  
+  m_dat <- list(N = dim(d)[1], 
+                   K = 2,
+                   a = d$a,
+                   c = d$c,
+                   v = d$v
+  )
+
+  # Need categorical prior for K. 
+  # It applies chain rule to work out derivatives
+  # for HMC using stan's algorithmic differentiation library.
+  model_code <-  'data {
+    int<lower=0> N;  // number of data points
+    int<lower=0> a[N];       // acquisitions
+    int<lower=0> c[N];       // clicks
+    int<lower=1> v[N];       // views
+  }
+  transformed data {
+    int<lower=1> K;  // number of clusters
+    K <- 2;
+    real<upper=0> neg_log_K;
+    neg_log_K <- -log(K); // Equal prior weights
+  }
+  parameters {
+    real<lower=0> alphaq[K]; // cluster means
+    real<lower=0> betaq[K];  
+    real<lower=0> alphap[K]; // cluster means
+    real<lower=0> betap[K];  
+    real<lower=0,upper=1> p[N];  
+    real<lower=0,upper=1> q[N];  
+  }
+  transformed parameters {
+
+    real<upper=0> soft_z[N,K]; // log unnormalized cluster assigns
+    for (n in 1:N)
+      for (k in 1:K)
+        soft_z[n,k] <- neg_log_K + beta_binomial_log(a[n],c[n],alphaq[k],betaq[k])
+                                 + beta_binomial_log(c[n],v[n],alphap[k],betap[k]);
+  }
+  model {
+
+    // Bad group
+    alphaq[0] ~ gamma(1,2);  
+    betaq[0] ~ gamma(1,2);  
+    alphap[0] ~ gamma(1,2);  
+    betap[0] ~ gamma(1,2);  
+    // Good group
+    alphaq[1] ~ uniform(0,10000);  
+    betaq[1] ~ uniform(0,10000);  
+    alphap[1] ~ uniform(0,10000);  
+    betap[1] ~ uniform(0,10000);  
+
+    for (n in 1:N)
+      increment_log_prob(log_sum_exp(soft_z[n])); // likelihood
+  }'
+  
+  stan(model_code = model_code, data = m_dat, iter = 1000, chains = 1)
+}
+
+\end{verbatim}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.7]{AdvFit.pdf}
+    \caption{Advance data RStan report}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.7]{M5Fit.pdf}
+    \caption{Model 5 RStan report}
+\end{figure}
 
 \end{document}
